@@ -1,4 +1,5 @@
-import { SHIP, BULLET, PLAYFIELD } from "./constants";
+import { SHIP, BULLET, PLAYFIELD, ENEMY_DRONE } from "./constants";
+import { circlesOverlap } from "./Collision";
 
 export type PilotInput = {
   moveX: number;   // -1, 0, 1
@@ -106,6 +107,42 @@ export function updateGameState(
   state.bullets = state.bullets.filter(
     b => b.life > 0 && b.y > -BULLET.pilotHeight,
   );
+
+  // Enemy step (drones fall straight down)
+  for (const e of state.enemies) {
+    e.y += ENEMY_DRONE.speed * dt;
+  }
+  // Cull off-screen drones
+  state.enemies = state.enemies.filter(e => e.y < PLAYFIELD.height + ENEMY_DRONE.height);
+
+  // Bullet vs enemy
+  for (const e of state.enemies) {
+    for (const b of state.bullets) {
+      if (circlesOverlap(b.x, b.y, BULLET.radius, e.x, e.y, ENEMY_DRONE.radius)) {
+        e.hp -= BULLET.pilotDamage;
+        b.life = 0; // mark bullet for removal next frame
+        if (e.hp <= 0) {
+          state.score += ENEMY_DRONE.scoreValue;
+          break; // this enemy is dead, no more bullets need to check it
+        }
+      }
+    }
+  }
+  state.enemies = state.enemies.filter(e => e.hp > 0);
+  state.bullets = state.bullets.filter(b => b.life > 0);
+
+  // Enemy vs ship
+  for (const e of state.enemies) {
+    if (circlesOverlap(state.ship.x, state.ship.y, SHIP.radius, e.x, e.y, ENEMY_DRONE.radius)) {
+      state.ship.hp = Math.max(0, state.ship.hp - ENEMY_DRONE.contactDamage);
+      e.hp = 0;
+    }
+  }
+  state.enemies = state.enemies.filter(e => e.hp > 0);
+
+  if (state.ship.hp <= 0) {
+    state.gameOver = true;
+  }
 
   return state;
 }

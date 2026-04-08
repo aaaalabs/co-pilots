@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createInitialState, updateGameState, PilotInput } from "../src/game/GameState";
-import { SHIP, PLAYFIELD, BULLET } from "../src/game/constants";
+import { SHIP, PLAYFIELD, BULLET, ENEMY_DRONE } from "../src/game/constants";
 
 const NO_INPUT: PilotInput = { moveX: 0, moveY: 0, fire: false };
 
@@ -98,6 +98,57 @@ describe("GameState", () => {
       const startY = s.bullets[0].y;
       s = updateGameState(s, 0.5, NO_INPUT);
       expect(s.bullets[0].y).toBeCloseTo(startY - BULLET.pilotSpeed * 0.5, 1);
+    });
+  });
+
+  describe("updateGameState — enemies", () => {
+    it("moves drones downward over time", () => {
+      const s = createInitialState();
+      s.enemies.push({ id: 1, x: 100, y: 50, hp: 25 });
+      s.nextEnemyId = 2;
+      const next = updateGameState(s, 1, NO_INPUT);
+      expect(next.enemies[0].y).toBeCloseTo(50 + ENEMY_DRONE.speed);
+    });
+
+    it("removes drones that fall off the bottom of the playfield", () => {
+      const s = createInitialState();
+      s.enemies.push({ id: 1, x: 100, y: PLAYFIELD.height + 50, hp: 25 });
+      s.nextEnemyId = 2;
+      const next = updateGameState(s, 0.016, NO_INPUT);
+      expect(next.enemies).toHaveLength(0);
+    });
+  });
+
+  describe("updateGameState — collisions", () => {
+    it("destroys an enemy hit by a pilot bullet and adds score", () => {
+      const s = createInitialState();
+      s.enemies.push({ id: 1, x: 100, y: 100, hp: 25 });
+      s.bullets.push({ id: 1, x: 100, y: 100, vy: -BULLET.pilotSpeed, life: 1 });
+      s.nextEnemyId = 2;
+      s.nextBulletId = 2;
+      const next = updateGameState(s, 0.016, NO_INPUT);
+      expect(next.enemies).toHaveLength(0);
+      expect(next.bullets).toHaveLength(0);
+      expect(next.score).toBe(ENEMY_DRONE.scoreValue);
+    });
+
+    it("damages the ship on enemy contact and removes the enemy", () => {
+      const s = createInitialState();
+      s.enemies.push({ id: 1, x: s.ship.x, y: s.ship.y, hp: 25 });
+      s.nextEnemyId = 2;
+      const next = updateGameState(s, 0.016, NO_INPUT);
+      expect(next.enemies).toHaveLength(0);
+      expect(next.ship.hp).toBe(SHIP.maxHp - ENEMY_DRONE.contactDamage);
+    });
+
+    it("triggers game over when ship HP reaches zero", () => {
+      const s = createInitialState();
+      s.ship.hp = ENEMY_DRONE.contactDamage; // one hit will kill
+      s.enemies.push({ id: 1, x: s.ship.x, y: s.ship.y, hp: 25 });
+      s.nextEnemyId = 2;
+      const next = updateGameState(s, 0.016, NO_INPUT);
+      expect(next.ship.hp).toBe(0);
+      expect(next.gameOver).toBe(true);
     });
   });
 });
