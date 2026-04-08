@@ -125,7 +125,8 @@ export class PeerConnection {
     this.detectConnectionType();
 
     this.conn.on("data", (data) => {
-      const msg = decodeMessage(data as string);
+      if (typeof data !== "string") return;
+      const msg = decodeMessage(data);
       if (msg) this.onMessage?.(msg);
     });
 

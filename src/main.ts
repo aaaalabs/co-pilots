@@ -30,6 +30,7 @@ function cleanup(): void {
   peer?.destroy();
   peer = null;
   remoteRole = null;
+  isHost = false;
 }
 
 async function handleCreateRoom(): Promise<void> {
