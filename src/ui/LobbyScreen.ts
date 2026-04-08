@@ -89,7 +89,7 @@ export class LobbyScreen {
         <p class="subtitle">or</p>
         <input id="code-input" placeholder="ABCD" maxlength="4" autocapitalize="characters" />
         <button id="join-btn">Join Room</button>
-        <p class="status">${this.statusMessage}</p>
+        <p class="status">${escapeHtml(this.statusMessage)}</p>
       </div>
     `;
     this.container.querySelector("#create-btn")!
@@ -104,7 +104,7 @@ export class LobbyScreen {
         <h1>CO-PILOTS</h1>
         <p class="subtitle">Share this code with your co-pilot</p>
         <div class="code-display">${this.roomCode}</div>
-        <p class="status">${this.statusMessage || "Waiting for co-pilot..."}</p>
+        <p class="status">${escapeHtml(this.statusMessage || "Waiting for co-pilot...")}</p>
       </div>
     `;
   }
@@ -132,7 +132,7 @@ export class LobbyScreen {
         <button class="primary" id="start-btn" ${!this.isHost || !this.peerReady ? "disabled" : ""}>
           ${this.isHost ? "Start Game" : "Waiting for host..."}
         </button>
-        <p class="status">${this.statusMessage}</p>
+        <p class="status">${escapeHtml(this.statusMessage)}</p>
       </div>
     `;
 
