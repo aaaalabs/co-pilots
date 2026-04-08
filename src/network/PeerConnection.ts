@@ -1,0 +1,203 @@
+import Peer, { DataConnection } from "peerjs";
+import { Message, encodeMessage, decodeMessage } from "./Protocol";
+
+export type ConnectionCallback = (msg: Message) => void;
+export type StatusCallback = (status: string) => void;
+
+const CONNECTION_TIMEOUT = 12000;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const METERED_API_URL = (import.meta as any).env?.VITE_METERED_API_URL as string | undefined;
+
+async function fetchIceServers(): Promise<RTCIceServer[]> {
+  const fallback: RTCIceServer[] = [
+    { urls: "stun:stun.l.google.com:19302" },
+  ];
+  if (!METERED_API_URL) return fallback;
+  try {
+    const res = await fetch(METERED_API_URL);
+    const servers = await res.json();
+    return servers;
+  } catch {
+    return fallback;
+  }
+}
+
+function createPeerWithIce(iceServers: RTCIceServer[], id?: string): Peer {
+  const opts = { config: { iceServers } };
+  return id ? new Peer(id, opts) : new Peer(opts);
+}
+
+export class PeerConnection {
+  private peer: Peer | null = null;
+  private conn: DataConnection | null = null;
+  private onMessage: ConnectionCallback | null = null;
+  private onStatus: StatusCallback | null = null;
+  private onDisconnect: (() => void) | null = null;
+  private iceServers: RTCIceServer[] = [];
+
+  setHandlers(handlers: {
+    onMessage: ConnectionCallback;
+    onStatus: StatusCallback;
+    onDisconnect: () => void;
+  }): void {
+    this.onMessage = handlers.onMessage;
+    this.onStatus = handlers.onStatus;
+    this.onDisconnect = handlers.onDisconnect;
+  }
+
+  private async ensureIce(): Promise<void> {
+    if (this.iceServers.length === 0) {
+      this.iceServers = await fetchIceServers();
+    }
+  }
+
+  async createRoom(): Promise<string> {
+    await this.ensureIce();
+    return new Promise((resolve, reject) => {
+      const code = this.generateCode();
+      const peerId = `cp-${code}`;
+      this.peer = createPeerWithIce(this.iceServers, peerId);
+
+      this.peer.on("open", () => {
+        this.onStatus?.("Waiting for co-pilot...");
+        resolve(code);
+      });
+
+      this.peer.on("connection", (conn) => {
+        this.conn = conn;
+        if (conn.open) {
+          this.setupConnection();
+        } else {
+          conn.on("open", () => this.setupConnection());
+        }
+      });
+
+      this.peer.on("error", (err) => {
+        reject(err);
+      });
+    });
+  }
+
+  async joinRoom(code: string): Promise<void> {
+    await this.ensureIce();
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("Connection timed out"));
+      }, CONNECTION_TIMEOUT);
+
+      this.peer = createPeerWithIce(this.iceServers);
+      this.peer.on("open", () => {
+        this.onStatus?.("Connecting...");
+        this.conn = this.peer!.connect(`cp-${code.toUpperCase()}`);
+        this.conn.on("open", () => {
+          clearTimeout(timeout);
+          this.setupConnection();
+          resolve();
+        });
+        this.conn.on("error", (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+      });
+      this.peer.on("error", (err) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+    });
+  }
+
+  send(msg: Message): void {
+    if (this.conn?.open) {
+      this.conn.send(encodeMessage(msg));
+    }
+  }
+
+  destroy(): void {
+    this.conn?.close();
+    this.peer?.destroy();
+    this.conn = null;
+    this.peer = null;
+  }
+
+  private setupConnection(): void {
+    if (!this.conn) return;
+
+    this.detectConnectionType();
+
+    this.conn.on("data", (data) => {
+      const msg = decodeMessage(data as string);
+      if (msg) this.onMessage?.(msg);
+    });
+
+    this.conn.on("close", () => {
+      this.onDisconnect?.();
+    });
+  }
+
+  private detectConnectionType(): void {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pc = (this.conn as any)?.peerConnection as RTCPeerConnection | undefined;
+    if (!pc) {
+      this.onStatus?.("Connected!");
+      return;
+    }
+
+    pc.oniceconnectionstatechange = () => {
+      const state = pc.iceConnectionState;
+      if (state === "checking") this.onStatus?.("Establishing route...");
+      if (state === "connected" || state === "completed") {
+        this.reportConnectionDetails(pc);
+      }
+      if (state === "failed") this.onStatus?.("Connection failed.");
+    };
+
+    if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+      this.reportConnectionDetails(pc);
+    } else {
+      this.onStatus?.("Connected! Optimizing...");
+    }
+  }
+
+  private reportConnectionDetails(pc: RTCPeerConnection): void {
+    pc.getStats().then(stats => {
+      let relayed = false;
+      let protocol = "";
+
+      stats.forEach(report => {
+        if (report.type === "candidate-pair" && (report as RTCIceCandidatePairStats).state === "succeeded") {
+          const pair = report as RTCIceCandidatePairStats;
+          const localId = pair.localCandidateId;
+          const remoteId = pair.remoteCandidateId;
+
+          stats.forEach(c => {
+            if (c.id === localId) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              protocol = (c as any).protocol ?? "";
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if ((c as any).candidateType === "relay") relayed = true;
+            }
+            if (c.id === remoteId) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if ((c as any).candidateType === "relay") relayed = true;
+            }
+          });
+        }
+      });
+
+      const mode = relayed ? "relay" : "direct";
+      const proto = protocol ? ` ${protocol.toUpperCase()}` : "";
+      this.onStatus?.(`Connected! (${mode}${proto})`);
+    }).catch(() => {
+      this.onStatus?.("Connected!");
+    });
+  }
+
+  private generateCode(): string {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 4; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+  }
+}
