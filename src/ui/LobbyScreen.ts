@@ -56,7 +56,7 @@ export class LobbyScreen {
 
   setStatus(msg: string): void {
     this.statusMessage = msg;
-    const el = this.container.querySelector(".status");
+    const el = this.container.querySelector(".lobby-status");
     if (el) el.textContent = msg;
   }
 
@@ -83,13 +83,15 @@ export class LobbyScreen {
   private renderInitial(): void {
     this.container.innerHTML = `
       <div class="lobby">
-        <h1>CO-PILOTS</h1>
-        <p class="subtitle">Two players, one ship</p>
-        <button class="primary" id="create-btn">Create Room</button>
-        <p class="subtitle">or</p>
-        <input id="code-input" placeholder="ABCD" maxlength="4" autocapitalize="characters" />
-        <button id="join-btn">Join Room</button>
-        <p class="status">${escapeHtml(this.statusMessage)}</p>
+        <h1 class="lobby-title">CO-PILOTS</h1>
+        <p class="lobby-subtitle">Two players, one ship</p>
+        <div class="lobby-actions">
+          <button class="lobby-btn primary" id="create-btn">Create Room</button>
+          <p class="lobby-subtitle" style="margin: 4px 0;">— or —</p>
+          <input class="lobby-input" id="code-input" placeholder="ABCD" maxlength="4" autocapitalize="characters" />
+          <button class="lobby-btn" id="join-btn">Join Room</button>
+          <p class="lobby-status">${escapeHtml(this.statusMessage)}</p>
+        </div>
       </div>
     `;
     this.container.querySelector("#create-btn")!
@@ -101,10 +103,12 @@ export class LobbyScreen {
   private renderHosting(): void {
     this.container.innerHTML = `
       <div class="lobby">
-        <h1>CO-PILOTS</h1>
-        <p class="subtitle">Share this code with your co-pilot</p>
-        <div class="code-display">${this.roomCode}</div>
-        <p class="status">${escapeHtml(this.statusMessage || "Waiting for co-pilot...")}</p>
+        <h1 class="lobby-title">CO-PILOTS</h1>
+        <p class="lobby-subtitle">Share this code</p>
+        <div class="lobby-actions">
+          <div class="lobby-code">${escapeHtml(this.roomCode)}</div>
+          <p class="lobby-status">${escapeHtml(this.statusMessage || "Waiting for co-pilot...")}</p>
+        </div>
       </div>
     `;
   }
@@ -113,38 +117,41 @@ export class LobbyScreen {
     const { role, difficulty, playerName } = this.settings;
     this.container.innerHTML = `
       <div class="lobby">
-        <h1>CO-PILOTS</h1>
-        <label>Your name</label>
-        <input id="name-input" value="${escapeHtml(playerName)}" placeholder="Name" maxlength="12" style="text-transform:none;letter-spacing:normal;" />
-        <label>Your role</label>
-        <div class="row">
-          <button class="role-btn ${role === "pilot" ? "selected" : ""}" data-role="pilot">🚀 Pilot</button>
-          <button class="role-btn ${role === "gunner" ? "selected" : ""}" data-role="gunner">🎯 Gunner</button>
-        </div>
-        ${this.isHost ? `
-          <label>Difficulty (host only)</label>
-          <div class="row">
-            <button class="diff-btn ${difficulty === "easy" ? "selected" : ""}" data-diff="easy">Easy</button>
-            <button class="diff-btn ${difficulty === "normal" ? "selected" : ""}" data-diff="normal">Normal</button>
-            <button class="diff-btn ${difficulty === "hard" ? "selected" : ""}" data-diff="hard">Hard</button>
+        <h1 class="lobby-title">CO-PILOTS</h1>
+        <p class="lobby-subtitle">Choose your station</p>
+        <div class="lobby-actions">
+          <label class="lobby-label">Your name</label>
+          <input class="lobby-input name-input" id="name-input" value="${escapeHtml(playerName)}" placeholder="Name" maxlength="12" />
+          <label class="lobby-label">Your role</label>
+          <div class="lobby-row">
+            <button class="lobby-btn ${role === "pilot" ? "selected" : ""}" data-role="pilot">🚀 Pilot</button>
+            <button class="lobby-btn ${role === "gunner" ? "selected" : ""}" data-role="gunner">🎯 Gunner</button>
           </div>
-        ` : ""}
-        <button class="primary" id="start-btn" ${!this.isHost || !this.peerReady ? "disabled" : ""}>
-          ${this.isHost ? "Start Game" : "Waiting for host..."}
-        </button>
-        <p class="status">${escapeHtml(this.statusMessage)}</p>
+          ${this.isHost ? `
+            <label class="lobby-label">Difficulty</label>
+            <div class="lobby-row">
+              <button class="lobby-btn ${difficulty === "easy" ? "selected" : ""}" data-diff="easy">Easy</button>
+              <button class="lobby-btn ${difficulty === "normal" ? "selected" : ""}" data-diff="normal">Normal</button>
+              <button class="lobby-btn ${difficulty === "hard" ? "selected" : ""}" data-diff="hard">Hard</button>
+            </div>
+          ` : ""}
+          <button class="lobby-btn primary" id="start-btn" ${!this.isHost || !this.peerReady ? "disabled" : ""}>
+            ${this.isHost ? "Start Game" : "Waiting for host..."}
+          </button>
+          <p class="lobby-status">${escapeHtml(this.statusMessage)}</p>
+        </div>
       </div>
     `;
 
     const nameInput = this.container.querySelector<HTMLInputElement>("#name-input")!;
     nameInput.addEventListener("input", () => this.handleNameChange(nameInput.value));
 
-    this.container.querySelectorAll<HTMLButtonElement>(".role-btn").forEach(btn => {
+    this.container.querySelectorAll<HTMLButtonElement>("[data-role]").forEach(btn => {
       btn.addEventListener("click", () => this.handleRoleClick(btn.dataset.role as Role));
     });
 
     if (this.isHost) {
-      this.container.querySelectorAll<HTMLButtonElement>(".diff-btn").forEach(btn => {
+      this.container.querySelectorAll<HTMLButtonElement>("[data-diff]").forEach(btn => {
         btn.addEventListener("click", () => this.handleDiffClick(btn.dataset.diff as Difficulty));
       });
       this.container.querySelector("#start-btn")!

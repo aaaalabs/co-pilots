@@ -117,15 +117,17 @@ function handleStartClick(): void {
 }
 
 function handleGameStart(difficulty: Difficulty): void {
-  // PLACEHOLDER — replaced by GameScreen in Plan 2+
+  // PLACEHOLDER — replaced by GameScreen in Task 9 of Plan 2
   lobby?.destroy();
   lobby = null;
   app.innerHTML = `
     <div class="lobby">
-      <h1>CO-PILOTS</h1>
-      <p class="subtitle">Game starting — placeholder</p>
-      <p class="status">Role: ${localSettings.role} · Difficulty: ${difficulty}</p>
-      <button id="back-btn" class="primary">Back to Lobby</button>
+      <h1 class="lobby-title">CO-PILOTS</h1>
+      <p class="lobby-subtitle">Game starting — placeholder</p>
+      <div class="lobby-actions">
+        <p class="lobby-status">Role: ${escapeHtml(localSettings.role)} · Difficulty: ${escapeHtml(difficulty)}</p>
+        <button id="back-btn" class="lobby-btn primary">Back to Lobby</button>
+      </div>
     </div>
   `;
   app.querySelector("#back-btn")!.addEventListener("click", () => showLobby());
@@ -138,3 +140,9 @@ function handleDisconnect(): void {
 }
 
 showLobby();
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  })[c]!);
+}
