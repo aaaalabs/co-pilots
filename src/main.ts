@@ -1,10 +1,12 @@
 import { PeerConnection } from "./network/PeerConnection";
 import { Message, Difficulty, Role } from "./network/Protocol";
 import { LobbyScreen, LobbySettings } from "./ui/LobbyScreen";
+import { GameScreen } from "./ui/GameScreen";
 
 const app = document.getElementById("app")!;
 
 let lobby: LobbyScreen | null = null;
+let gameScreen: GameScreen | null = null;
 let peer: PeerConnection | null = null;
 let isHost = false;
 let localSettings: LobbySettings = {
@@ -27,6 +29,8 @@ function showLobby(): void {
 function cleanup(): void {
   lobby?.destroy();
   lobby = null;
+  gameScreen?.destroy();
+  gameScreen = null;
   peer?.destroy();
   peer = null;
   remoteRole = null;
@@ -116,21 +120,12 @@ function handleStartClick(): void {
   handleGameStart(localSettings.difficulty);
 }
 
-function handleGameStart(difficulty: Difficulty): void {
-  // PLACEHOLDER — replaced by GameScreen in Task 9 of Plan 2
+function handleGameStart(_difficulty: Difficulty): void {
   lobby?.destroy();
   lobby = null;
-  app.innerHTML = `
-    <div class="lobby">
-      <h1 class="lobby-title">CO-PILOTS</h1>
-      <p class="lobby-subtitle">Game starting — placeholder</p>
-      <div class="lobby-actions">
-        <p class="lobby-status">Role: ${escapeHtml(localSettings.role)} · Difficulty: ${escapeHtml(difficulty)}</p>
-        <button id="back-btn" class="lobby-btn primary">Back to Lobby</button>
-      </div>
-    </div>
-  `;
-  app.querySelector("#back-btn")!.addEventListener("click", () => showLobby());
+  gameScreen = new GameScreen(app, {
+    onExit: () => showLobby(),
+  });
 }
 
 function handleDisconnect(): void {
@@ -140,9 +135,3 @@ function handleDisconnect(): void {
 }
 
 showLobby();
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  })[c]!);
-}
