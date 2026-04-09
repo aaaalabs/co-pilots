@@ -191,15 +191,23 @@ function createPng(width: number, height: number, pixels: Uint8Array): Uint8Arra
   return png;
 }
 
-function spriteToPixels(grid: number[][], scale: number): { width: number; height: number; pixels: Uint8Array } {
+function spriteToPixels(grid: number[][], scale: number, darkBg = false): { width: number; height: number; pixels: Uint8Array } {
   const w = 8 * scale;
   const h = 8 * scale;
   const pixels = new Uint8Array(w * h * 4); // RGBA
 
+  // Fill with dark background if requested (shows dark outlines)
+  if (darkBg) {
+    const [br, bg, bb] = hexToRgb("#0a0a1a");
+    for (let i = 0; i < w * h * 4; i += 4) {
+      pixels[i] = br; pixels[i+1] = bg; pixels[i+2] = bb; pixels[i+3] = 255;
+    }
+  }
+
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       const idx = grid[row][col];
-      if (idx === 0) continue; // transparent (already 0,0,0,0)
+      if (idx === 0) continue; // transparent
       const color = PALETTE[idx];
       if (!color) continue;
       const [r, g, b] = hexToRgb(color);
@@ -225,7 +233,8 @@ const outDir = join(__dirname, "../public/sprites");
 const SCALE = 32; // 8×8 → 256×256 preview PNGs
 
 for (const [name, grid] of Object.entries(SPRITES)) {
-  const { width, height, pixels } = spriteToPixels(grid, SCALE);
+  // Preview on dark background (shows all 5 colors as in-game)
+  const { width, height, pixels } = spriteToPixels(grid, SCALE, true);
   const png = createPng(width, height, pixels);
   const path = join(outDir, `${name}.png`);
   writeFileSync(path, png);

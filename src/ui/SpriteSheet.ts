@@ -16,111 +16,118 @@ const PALETTE = [
 // Design at 1x, rendered scaled up with nearest-neighbor (image-rendering: pixelated).
 
 // ── PLAYER SHIP ──
-// Top-down fighter: pointed nose, swept wings, cockpit detail, engine exhausts.
-// Dark outline gives depth. White cockpit + wing edge highlights.
+// Top-down fighter with visible structure: cockpit canopy, hull plating,
+// swept delta wings, thruster ports. Uses dithered shading (5/1 mix)
+// on wing edges for depth. Fills most of the 8x8 canvas.
 const SHIP: number[][] = [
-  [0,0,0,5,1,5,0,0],  // nose tip with dark outline
-  [0,0,5,4,1,1,5,0],  // cockpit (white) behind nose
-  [0,0,5,1,1,1,5,0],  // fuselage
-  [0,5,1,1,1,1,1,5],  // wing root
-  [5,4,1,1,1,1,4,5],  // full wingspan, white wing-edge highlights
-  [5,1,1,5,5,1,1,5],  // wing gap / engine bay (dark center)
-  [0,5,1,5,5,1,5,0],  // engine nacelles
-  [0,0,4,0,0,4,0,0],  // twin exhaust glow (white = hot)
+  [0,0,0,4,4,0,0,0],  // cockpit canopy (white, 2px wide = visible)
+  [0,0,5,1,1,5,0,0],  // cockpit surround, dark frame
+  [0,5,1,4,1,1,5,0],  // hull with panel line (white accent left)
+  [5,1,1,1,1,1,1,5],  // main fuselage, full width, dark outline
+  [1,5,1,1,1,1,5,1],  // wing with dark stripe (dithered depth)
+  [1,1,5,1,1,5,1,1],  // inner wing shadow lines
+  [1,0,5,5,5,5,0,1],  // engine bay cutout (dark), wingtips remain
+  [0,0,1,4,4,1,0,0],  // twin thruster glow (white-hot nozzles)
 ];
 
 // ── TURRET ──
-// Rotating cannon: barrel pointing up, round base, muzzle flash hint.
-// Compact so it reads well at any rotation angle.
+// Double-barrel cannon with ammo drum. Must read at any rotation.
+// Symmetrical around vertical axis for clean 360° spin.
 const TURRET: number[][] = [
-  [0,0,0,4,0,0,0,0],  // muzzle flash / tip (white)
-  [0,0,0,2,0,0,0,0],  // barrel
-  [0,0,5,2,5,0,0,0],  // barrel with dark edge
-  [0,0,5,2,5,0,0,0],  // barrel continued
-  [0,5,2,2,2,2,5,0],  // base top (wide)
-  [0,5,2,4,2,2,5,0],  // base with highlight
-  [0,0,5,2,2,5,0,0],  // base bottom
-  [0,0,0,5,5,0,0,0],  // mount point
+  [0,0,4,0,0,4,0,0],  // twin muzzle flash tips
+  [0,0,2,0,0,2,0,0],  // twin barrels
+  [0,0,2,5,5,2,0,0],  // barrel housing (dark gap between)
+  [0,5,2,2,2,2,5,0],  // receiver / ammo drum top
+  [0,5,2,4,4,2,5,0],  // ammo drum with indicator lights (white)
+  [0,5,2,2,2,2,5,0],  // receiver bottom
+  [0,0,5,2,2,5,0,0],  // mount collar
+  [0,0,0,5,5,0,0,0],  // pivot pin
 ];
 
 // ── DRONE ENEMY ──
-// Alien insectoid: angular carapace, glowing eyes, dangling limbs.
-// Inverted silhouette from player ship so they're instantly distinguishable.
+// Menacing alien drone: armored carapace, sensor eye, mandibles,
+// asymmetric antenna. Silhouette reads as "wide + squat" — opposite
+// of the player ship's "tall + narrow" to be instantly distinguishable.
 const DRONE: number[][] = [
-  [0,2,0,0,0,0,2,0],  // antennae
-  [0,0,2,5,5,2,0,0],  // head with dark eye sockets
-  [0,5,4,2,2,4,5,0],  // eyes (white = glowing) + dark outline
-  [5,2,2,2,2,2,2,5],  // thorax, full width
-  [5,2,2,2,2,2,2,5],  // abdomen
-  [0,5,2,5,5,2,5,0],  // waist with dark segments
-  [0,2,5,0,0,5,2,0],  // legs dangling
-  [2,0,0,0,0,0,0,2],  // leg tips
+  [0,2,0,5,5,0,0,0],  // asymmetric antenna + head plate
+  [2,5,2,2,2,2,5,0],  // armored head, dark edges
+  [5,2,2,4,4,2,2,5],  // sensor eyes (white glow), full width
+  [2,2,5,2,2,5,2,2],  // mandible gap (dark), armored cheeks
+  [5,2,2,2,2,2,2,5],  // thorax plate, outlined
+  [0,5,2,5,5,2,5,0],  // segmented waist
+  [0,2,5,0,0,5,2,0],  // grasping legs with joints (dark)
+  [2,5,0,0,0,0,5,2],  // claw tips with dark accents
 ];
 
 // ── PILOT BULLET ──
-// Energy lance: white-hot tip fading to cyan trail, 2px wide for visibility.
+// Elongated energy bolt, 2px wide. Intensity gradient: white-hot tip,
+// bright cyan core, fading dithered tail, dark exhaust pixel.
 const BULLET_PILOT: number[][] = [
-  [0,0,0,4,0,0,0,0],  // white-hot tip
-  [0,0,0,4,0,0,0,0],  // white core
-  [0,0,0,1,1,0,0,0],  // cyan body
-  [0,0,0,1,1,0,0,0],  // cyan body
-  [0,0,0,1,1,0,0,0],  // cyan body
-  [0,0,0,1,0,0,0,0],  // trail narrows
-  [0,0,0,5,0,0,0,0],  // trail fade (dark)
+  [0,0,0,4,4,0,0,0],  // white-hot tip (2px wide for visibility)
+  [0,0,0,1,4,0,0,0],  // transition (cyan + white dither)
+  [0,0,0,1,1,0,0,0],  // bright cyan core
+  [0,0,0,1,1,0,0,0],  // bright cyan core
+  [0,0,0,5,1,0,0,0],  // fading (dark + cyan dither)
+  [0,0,0,5,5,0,0,0],  // dark exhaust
+  [0,0,0,0,5,0,0,0],  // trail end
   [0,0,0,0,0,0,0,0],
 ];
 
 // ── GUNNER BULLET ──
-// Plasma orb: magenta ring with white-hot core, dark outline for pop.
+// Spinning plasma orb. Dark outline ring → magenta shell → white core.
+// Slightly asymmetric (highlight offset) to imply rotation.
 const BULLET_GUNNER: number[][] = [
-  [0,0,0,0,0,0,0,0],
-  [0,0,0,5,5,0,0,0],  // dark outline top
-  [0,0,5,2,2,5,0,0],  // magenta ring top
-  [0,5,2,4,4,2,5,0],  // white-hot core
-  [0,5,2,4,4,2,5,0],  // white-hot core
-  [0,0,5,2,2,5,0,0],  // magenta ring bottom
-  [0,0,0,5,5,0,0,0],  // dark outline bottom
+  [0,0,5,5,5,0,0,0],  // top outline arc
+  [0,5,2,2,2,5,0,0],  // magenta shell top
+  [5,2,4,4,2,2,5,0],  // highlight offset left (rotation implied)
+  [5,2,4,4,4,2,5,0],  // white-hot center
+  [5,2,2,4,2,2,5,0],  // center fading
+  [0,5,2,2,2,5,0,0],  // magenta shell bottom
+  [0,0,5,5,5,0,0,0],  // bottom outline arc
   [0,0,0,0,0,0,0,0],
 ];
 
 // ── EXPLOSION FRAME 1 ──
-// Impact flash: bright core, radiating shards in both team colors.
+// Initial detonation: white-hot center expands outward, mixed cyan/magenta
+// shrapnel radiates in 8 directions. Dithered edges for energy dissipation.
 const EXPLOSION_1: number[][] = [
-  [0,0,0,1,0,0,0,0],  // top shard (cyan)
-  [0,0,0,4,2,0,0,0],  // white flash + magenta
-  [0,0,2,4,4,1,0,0],  // expanding core
-  [1,4,4,4,4,4,4,2],  // full flash line
-  [0,0,1,4,4,2,0,0],  // expanding core
-  [0,0,0,2,4,0,0,0],  // white flash + magenta
-  [0,0,0,2,0,0,0,0],  // bottom shard (magenta)
-  [0,0,0,0,0,1,0,0],  // stray spark
+  [1,0,0,2,1,0,0,2],  // outer spark ring
+  [0,1,0,4,4,0,2,0],  // inner sparks + flash
+  [0,0,2,4,4,1,0,0],  // fireball edge
+  [2,4,4,4,4,4,4,1],  // full detonation line
+  [1,4,4,4,4,4,4,2],  // full detonation line (offset = asymmetric)
+  [0,0,1,4,4,2,0,0],  // fireball edge
+  [0,2,0,4,4,0,1,0],  // inner sparks + flash
+  [2,0,0,1,2,0,0,1],  // outer spark ring
 ];
 
 // ── EXPLOSION FRAME 2 ──
-// Dissipating debris: scattered fragments, mostly faded, asymmetric.
+// Dissipation: debris scatters outward, center cools to dark, mostly empty.
+// Sparse pixels at edges = particles flying away. Dark core = smoke.
 const EXPLOSION_2: number[][] = [
-  [1,0,0,0,0,0,2,0],  // far-flung debris
-  [0,0,2,0,0,1,0,0],  // scattered
-  [0,0,0,5,2,0,0,0],  // cooling center (dark)
-  [0,1,5,5,5,5,0,2],  // dark remnant core
-  [0,0,0,5,5,0,1,0],  // still hot edges
-  [0,2,0,0,0,0,0,0],  // debris
-  [0,0,0,1,0,2,0,0],  // sparks
-  [0,0,0,0,0,0,0,1],  // final spark
+  [1,0,0,0,0,2,0,0],  // far debris
+  [0,0,2,0,0,0,0,1],  // scattered embers
+  [0,1,5,5,0,0,2,0],  // cooling core edge
+  [0,0,5,5,5,1,0,0],  // dark smoke remnant
+  [0,0,0,5,5,5,0,0],  // smoke center
+  [0,2,0,0,5,0,1,0],  // cooling core edge
+  [0,0,0,0,0,2,0,0],  // ember
+  [0,0,1,0,0,0,0,2],  // final sparks at max radius
 ];
 
 // ── POWERUP ──
-// Rotating energy capsule: yellow diamond with white core, dark outline,
-// designed to catch the eye against the dark playfield.
+// Pulsating energy crystal: octagonal shape with layered glow.
+// Dark outer ring → yellow shell → white-hot inner facets.
+// Designed to pop against the dark playfield and be unmissable.
 const POWERUP: number[][] = [
-  [0,0,0,5,5,0,0,0],  // top outline
-  [0,0,5,3,3,5,0,0],  // yellow under dark frame
-  [0,5,3,4,4,3,5,0],  // white-hot center
-  [5,3,4,4,4,4,3,5],  // full bright core
-  [5,3,4,4,4,4,3,5],  // full bright core
-  [0,5,3,4,4,3,5,0],  // white-hot center
-  [0,0,5,3,3,5,0,0],  // yellow under dark frame
-  [0,0,0,5,5,0,0,0],  // bottom outline
+  [0,0,5,5,5,5,0,0],  // top edge (dark frame)
+  [0,5,3,3,3,3,5,0],  // outer glow (yellow)
+  [5,3,3,4,4,3,3,5],  // inner facets (white)
+  [5,3,4,3,3,4,3,5],  // hollow center effect (yellow gap)
+  [5,3,4,3,3,4,3,5],  // hollow center effect
+  [5,3,3,4,4,3,3,5],  // inner facets
+  [0,5,3,3,3,3,5,0],  // outer glow
+  [0,0,5,5,5,5,0,0],  // bottom edge
 ];
 
 export const SPRITES = {
