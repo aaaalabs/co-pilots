@@ -19,11 +19,16 @@ let remoteRole: Role | null = null;
 function showLobby(): void {
   cleanup();
   lobby = new LobbyScreen(app, {
+    onSolo: handleSolo,
     onCreateRoom: handleCreateRoom,
     onJoinRoom: handleJoinRoom,
     onSettingsChange: handleSettingsChange,
     onStart: handleStartClick,
   });
+}
+
+function handleSolo(): void {
+  handleGameStart("normal");
 }
 
 function cleanup(): void {

@@ -7,6 +7,7 @@ export interface LobbySettings {
 }
 
 export interface LobbyCallbacks {
+  onSolo: () => void;
   onCreateRoom: () => void;
   onJoinRoom: (code: string) => void;
   onSettingsChange: (settings: LobbySettings) => void;
@@ -86,7 +87,8 @@ export class LobbyScreen {
         <h1 class="lobby-title">CO-PILOTS</h1>
         <p class="lobby-subtitle">Two players, one ship</p>
         <div class="lobby-actions">
-          <button class="lobby-btn primary" id="create-btn">Create Room</button>
+          <button class="lobby-btn primary" id="solo-btn">Solo Play</button>
+          <button class="lobby-btn" id="create-btn">Create Room</button>
           <p class="lobby-subtitle" style="margin: 4px 0;">— or —</p>
           <input class="lobby-input" id="code-input" placeholder="ABCD" maxlength="4" autocapitalize="characters" />
           <button class="lobby-btn" id="join-btn">Join Room</button>
@@ -94,6 +96,8 @@ export class LobbyScreen {
         </div>
       </div>
     `;
+    this.container.querySelector("#solo-btn")!
+      .addEventListener("click", () => this.callbacks.onSolo());
     this.container.querySelector("#create-btn")!
       .addEventListener("click", () => this.handleCreateClick());
     this.container.querySelector("#join-btn")!
