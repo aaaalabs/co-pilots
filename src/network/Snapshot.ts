@@ -15,6 +15,7 @@ export function serializeSnapshot(state: GameState): SnapshotData {
       y: b.y,
       vx: b.vx,
       vy: b.vy,
+      ...(b.enemy ? { enemy: true } : {}),
     })),
     enemies: state.enemies.map(e => ({
       id: e.id,
@@ -47,6 +48,7 @@ export function applySnapshot(snap: SnapshotData): GameState {
       vx: b.vx,
       vy: b.vy,
       life: 1,
+      enemy: b.enemy,
     })),
     enemies: snap.enemies.map(e => ({
       id: e.id,

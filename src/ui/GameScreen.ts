@@ -198,7 +198,7 @@ export class GameScreen {
     const bulletCount = this.state.bullets.length;
     if (bulletCount > this.prevBulletCount) {
       const newest = this.state.bullets[this.state.bullets.length - 1];
-      if (newest.vy > 0) {
+      if (newest.enemy) {
         this.sound.play("bossShoot");
       } else if (newest.vx === 0) {
         this.sound.play("pilotShoot");

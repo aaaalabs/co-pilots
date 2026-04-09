@@ -254,8 +254,8 @@ export class Renderer {
 
   private drawBullets(state: GameState): void {
     for (const b of state.bullets) {
-      // Boss bullets go downward (vy > 0)
-      if (b.vy > 0) {
+      // Boss bullets
+      if (b.enemy) {
         this.drawSpriteGlow("bossBullet", b.x - SS / 2, b.y - SS / 2, COLORS.yellow);
         continue;
       }

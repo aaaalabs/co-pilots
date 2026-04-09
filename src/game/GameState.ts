@@ -29,7 +29,8 @@ export type Bullet = {
   y: number;
   vx: number;
   vy: number;
-  life: number;          // seconds remaining
+  life: number;
+  enemy?: boolean;       // true for boss projectiles
 };
 
 export type Enemy = {
@@ -189,6 +190,7 @@ export function updateGameState(
             vx: (dx / dist) * ENEMY_BOSS.bulletSpeed,
             vy: (dy / dist) * ENEMY_BOSS.bulletSpeed,
             life: 3.0,
+            enemy: true,
           });
         }
       }
@@ -205,7 +207,7 @@ export function updateGameState(
     const er = e.type === 2 ? ENEMY_BOSS.radius : ENEMY_DRONE.radius;
     for (const b of state.bullets) {
       // Don't let boss bullets hit enemies
-      if (b.vy > 0) continue;
+      if (b.enemy) continue;
       if (circlesOverlap(b.x, b.y, BULLET.radius, e.x, e.y, er)) {
         const dmg = b.vx === 0 ? BULLET.pilotDamage : BULLET.gunnerDamage;
         e.hp -= dmg;
@@ -219,6 +221,16 @@ export function updateGameState(
     }
   }
   state.enemies = state.enemies.filter(e => e.hp > 0);
+  state.bullets = state.bullets.filter(b => b.life > 0);
+
+  // Enemy bullets vs ship (boss projectiles)
+  for (const b of state.bullets) {
+    if (!b.enemy) continue;
+    if (circlesOverlap(b.x, b.y, BULLET.radius, ship.x, ship.y, SHIP.radius)) {
+      ship.hp = Math.max(0, ship.hp - ENEMY_BOSS.contactDamage);
+      b.life = 0;
+    }
+  }
   state.bullets = state.bullets.filter(b => b.life > 0);
 
   // Enemy vs ship
