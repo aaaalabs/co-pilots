@@ -43,8 +43,8 @@ export class Renderer {
   }
 
   private drawShip(state: GameState): void {
-    const { x, y } = state.ship;
-    // Cyan body
+    const { x, y, turretAngle } = state.ship;
+    // Cyan body (does not rotate)
     this.drawCell(
       x - SHIP.bodyWidth / 2,
       y - SHIP.bodyHeight / 2,
@@ -53,25 +53,35 @@ export class Renderer {
       COLORS.cyan,
       10,
     );
-    // Magenta turret stub on top of the body (visualises the gunner role)
+    // Magenta turret — rotated by turretAngle around ship top-center
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(x, y - SHIP.bodyHeight / 2);
+    ctx.rotate(turretAngle);
     this.drawCell(
-      x - SHIP.turretWidth / 2,
-      y - SHIP.bodyHeight / 2 - SHIP.turretHeight,
+      -SHIP.turretWidth / 2,
+      -SHIP.turretHeight,
       SHIP.turretWidth,
       SHIP.turretHeight,
       COLORS.magenta,
       8,
     );
+    ctx.restore();
   }
 
   private drawBullets(state: GameState): void {
     for (const b of state.bullets) {
+      // Pilot bullets (vx===0): cyan, tall rect. Gunner bullets: magenta, square.
+      const isPilot = b.vx === 0;
+      const w = isPilot ? BULLET.pilotWidth : BULLET.gunnerWidth;
+      const h = isPilot ? BULLET.pilotHeight : BULLET.gunnerHeight;
+      const color = isPilot ? COLORS.cyan : COLORS.magenta;
       this.drawCell(
-        b.x - BULLET.pilotWidth / 2,
-        b.y - BULLET.pilotHeight / 2,
-        BULLET.pilotWidth,
-        BULLET.pilotHeight,
-        COLORS.cyan,
+        b.x - w / 2,
+        b.y - h / 2,
+        w,
+        h,
+        color,
         6,
       );
     }
