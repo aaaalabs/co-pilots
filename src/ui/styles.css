@@ -309,6 +309,11 @@ body::after {
   font-variant-numeric: tabular-nums;
 }
 
+.hud-value.warning {
+  color: var(--yellow);
+  text-shadow: 0 0 8px rgba(255, 255, 0, 0.5);
+}
+
 .hud-value.danger {
   color: var(--magenta);
   text-shadow: 0 0 8px rgba(255, 0, 170, 0.5);

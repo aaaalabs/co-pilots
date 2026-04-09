@@ -35,6 +35,8 @@ export function applySnapshot(snap: SnapshotData): GameState {
       hp: snap.ship.hp,
       turretAngle: snap.ship.turretAngle,
       fireCooldown: 0,
+      heat: 0,
+      overheated: false,
       gunnerFireCooldown: 0,
     },
     bullets: snap.bullets.map(b => ({

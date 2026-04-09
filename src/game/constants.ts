@@ -16,7 +16,12 @@ export const SHIP = {
   turretHeight: 12,
   speed: 220,            // pixels per second
   maxHp: 100,
-  fireCooldown: 0.18,    // seconds between shots
+  fireCooldown: 0.10,    // seconds between shots (fast burst)
+  heatPerShot: 0.10,     // heat added per pilot shot (0–1 scale)
+  heatDecay: 0.25,       // heat decay per second (passive cooling)
+  heatDecayOverheated: 0.5, // faster decay during forced cooldown
+  overheatThreshold: 1.0,   // triggers overheat
+  cooldownThreshold: 0.2,   // clears overheat
   gunnerFireCooldown: 0.25, // seconds between gunner shots
 } as const;
 

@@ -58,44 +58,75 @@ describe("GameState", () => {
     });
   });
 
-  describe("updateGameState — pilot auto-fire", () => {
-    it("auto-fires a bullet when cooldown is ready", () => {
+  const FIRE: PilotInput = { moveX: 0, moveY: 0, fire: true };
+
+  describe("updateGameState — pilot firing + overheat", () => {
+    it("fires when Space held and cooldown ready", () => {
       const s = createInitialState();
-      const next = updateGameState(s, 0.016, NO_INPUT);
+      const next = updateGameState(s, 0.016, FIRE);
       expect(next.bullets).toHaveLength(1);
       expect(next.bullets[0].vy).toBeLessThan(0);
       expect(next.bullets[0].vx).toBe(0);
     });
 
+    it("does NOT fire without Space", () => {
+      const s = createInitialState();
+      const next = updateGameState(s, 0.016, NO_INPUT);
+      expect(next.bullets).toHaveLength(0);
+    });
+
     it("respects the fire cooldown", () => {
       let s = createInitialState();
-      s = updateGameState(s, 0.016, NO_INPUT);
-      // Immediately try again — cooldown should block
-      s = updateGameState(s, 0.016, NO_INPUT);
+      s = updateGameState(s, 0.016, FIRE);
+      s = updateGameState(s, 0.016, FIRE);
       expect(s.bullets).toHaveLength(1);
     });
 
-    it("can fire again after cooldown elapses", () => {
+    it("builds heat with each shot", () => {
       let s = createInitialState();
-      s = updateGameState(s, 0.016, NO_INPUT);
-      // Advance time past cooldown
-      s = updateGameState(s, SHIP.fireCooldown + 0.01, NO_INPUT);
-      s = updateGameState(s, 0.016, NO_INPUT);
-      expect(s.bullets).toHaveLength(2);
+      s = updateGameState(s, 0.016, FIRE);
+      expect(s.ship.heat).toBeCloseTo(SHIP.heatPerShot);
+    });
+
+    it("overheats after enough sustained fire", () => {
+      let s = createInitialState();
+      // Fire rapidly — heat per shot (0.10) minus decay during cooldown (0.25 * 0.11 ≈ 0.028)
+      // Net heat per shot ≈ 0.072, need ~14 shots to reach 1.0
+      for (let i = 0; i < 20; i++) {
+        s = updateGameState(s, SHIP.fireCooldown + 0.001, FIRE);
+      }
+      expect(s.ship.overheated).toBe(true);
+    });
+
+    it("cannot fire while overheated", () => {
+      let s = createInitialState();
+      s.ship.overheated = true;
+      s.ship.heat = 0.8;
+      const bulletsBefore = s.bullets.length;
+      s = updateGameState(s, 0.016, FIRE);
+      expect(s.bullets).toHaveLength(bulletsBefore);
+    });
+
+    it("clears overheat when cooled below threshold", () => {
+      let s = createInitialState();
+      s.ship.overheated = true;
+      s.ship.heat = SHIP.cooldownThreshold;
+      // Advance enough for heat to decay below threshold
+      s = updateGameState(s, 0.5, NO_INPUT);
+      expect(s.ship.overheated).toBe(false);
     });
 
     it("bullets despawn after maxLifetime", () => {
       let s = createInitialState();
-      s = updateGameState(s, 0.016, NO_INPUT);
+      s = updateGameState(s, 0.016, FIRE);
       expect(s.bullets).toHaveLength(1);
-      // Advance well beyond bullet lifetime
       s = updateGameState(s, BULLET.maxLifetime + 0.5, NO_INPUT);
       expect(s.bullets).toHaveLength(0);
     });
 
     it("bullets travel upward with the configured speed", () => {
       let s = createInitialState();
-      s = updateGameState(s, 0.016, NO_INPUT);
+      s = updateGameState(s, 0.016, FIRE);
       const startY = s.bullets[0].y;
       s = updateGameState(s, 0.5, NO_INPUT);
       expect(s.bullets[0].y).toBeCloseTo(startY - BULLET.pilotSpeed * 0.5, 1);

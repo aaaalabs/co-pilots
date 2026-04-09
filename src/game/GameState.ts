@@ -16,7 +16,9 @@ export type Ship = {
   x: number;
   y: number;
   hp: number;
-  fireCooldown: number;  // remaining cooldown in seconds
+  fireCooldown: number;
+  heat: number;           // 0–1, builds with each shot
+  overheated: boolean;    // true = forced cooldown, can't fire
   turretAngle: number;
   gunnerFireCooldown: number;
 };
@@ -55,6 +57,8 @@ export function createInitialState(): GameState {
       y: SHIP.startY,
       hp: SHIP.maxHp,
       fireCooldown: 0,
+      heat: 0,
+      overheated: false,
       turretAngle: 0,
       gunnerFireCooldown: 0,
     },
@@ -95,11 +99,20 @@ export function updateGameState(
     PLAYFIELD.height - SHIP.bodyHeight / 2,
   );
 
+  // Heat decay (passive cooling)
+  const decay = ship.overheated ? SHIP.heatDecayOverheated : SHIP.heatDecay;
+  ship.heat = Math.max(0, ship.heat - decay * dt);
+
+  // Clear overheat when cooled enough
+  if (ship.overheated && ship.heat <= SHIP.cooldownThreshold) {
+    ship.overheated = false;
+  }
+
   // Cooldown tick
   ship.fireCooldown = Math.max(0, ship.fireCooldown - dt);
 
-  // Pilot auto-fire (always fires forward when cooldown ready)
-  if (ship.fireCooldown <= 0) {
+  // Pilot fire (Space) — machine gun with overheat
+  if (input.fire && !ship.overheated && ship.fireCooldown <= 0) {
     state.bullets.push({
       id: state.nextBulletId++,
       x: ship.x,
@@ -109,6 +122,10 @@ export function updateGameState(
       life: BULLET.maxLifetime,
     });
     ship.fireCooldown = SHIP.fireCooldown;
+    ship.heat += SHIP.heatPerShot;
+    if (ship.heat >= SHIP.overheatThreshold) {
+      ship.overheated = true;
+    }
   }
 
   // Gunner input
