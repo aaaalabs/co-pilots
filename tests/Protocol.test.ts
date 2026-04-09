@@ -47,7 +47,7 @@ describe("Protocol", () => {
       state: {
         ship: { x: 100, y: 200, hp: 80, turretAngle: 1.5 },
         bullets: [{ id: 1, x: 10, y: 20, vx: 0, vy: -540 }],
-        enemies: [{ id: 1, x: 50, y: 30, hp: 25 }],
+        enemies: [{ id: 1, type: 0, x: 50, y: 30, hp: 25 }],
         score: 120,
         gameOver: false,
       },

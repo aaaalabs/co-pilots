@@ -130,12 +130,56 @@ const POWERUP: number[][] = [
   [0,0,5,5,5,5,0,0],  // bottom edge
 ];
 
+// ── HUNTER ──
+// Faster, sleeker pursuit drone. V-shape pointing down (chasing).
+// Yellow accents to distinguish from regular drones.
+const HUNTER: number[][] = [
+  [3,0,0,0,0,0,0,3],  // wingtip sensors (yellow)
+  [5,3,0,0,0,0,3,5],  // wing edges
+  [0,5,2,0,0,2,5,0],  // inner wings
+  [0,0,5,2,2,5,0,0],  // converging
+  [0,0,0,4,4,0,0,0],  // cockpit (white = targeting)
+  [0,0,5,2,2,5,0,0],  // body
+  [0,0,0,5,5,0,0,0],  // thruster
+  [0,0,0,3,3,0,0,0],  // engine glow (yellow)
+];
+
+// ── BOSS ──
+// Massive warship, 8x8 but rendered at 2x sprite scale.
+// Dark armored hull, magenta core, white weapon ports.
+const BOSS: number[][] = [
+  [5,5,2,4,4,2,5,5],  // top armor + weapon ports (white)
+  [5,2,2,2,2,2,2,5],  // upper hull
+  [2,2,5,2,2,5,2,2],  // armor plates (dark seams)
+  [2,4,2,2,2,2,4,2],  // side cannons (white)
+  [2,2,2,5,5,2,2,2],  // central reactor gap (dark)
+  [5,2,5,4,4,5,2,5],  // reactor core (white glow)
+  [5,2,2,2,2,2,2,5],  // lower hull
+  [0,5,2,5,5,2,5,0],  // engine bay
+];
+
+// ── BOSS BULLET ──
+// Red-ish enemy projectile (uses magenta + yellow for "danger" feel).
+const BOSS_BULLET: number[][] = [
+  [0,0,0,0,0,0,0,0],
+  [0,0,0,3,0,0,0,0],  // yellow tip (warning!)
+  [0,0,2,4,2,0,0,0],  // magenta + white hot core
+  [0,0,2,2,2,0,0,0],  // magenta body
+  [0,0,0,2,0,0,0,0],  // trail
+  [0,0,0,5,0,0,0,0],  // dark tail
+  [0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0],
+];
+
 export const SPRITES = {
   ship: SHIP,
   turret: TURRET,
   drone: DRONE,
+  hunter: HUNTER,
+  boss: BOSS,
   bulletPilot: BULLET_PILOT,
   bulletGunner: BULLET_GUNNER,
+  bossBullet: BOSS_BULLET,
   explosion1: EXPLOSION_1,
   explosion2: EXPLOSION_2,
   powerup: POWERUP,

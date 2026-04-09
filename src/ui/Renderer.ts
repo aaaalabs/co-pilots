@@ -1,6 +1,6 @@
 import { GameState } from "../game/GameState";
 import { COLORS, PLAYFIELD } from "../game/constants";
-import { drawSprite, getSpriteSize } from "./SpriteSheet";
+import { drawSprite, getSpriteSize, SpriteKey } from "./SpriteSheet";
 
 const GRID_SIZE = 40;
 const SPRITE_SCALE = 3;
@@ -254,6 +254,11 @@ export class Renderer {
 
   private drawBullets(state: GameState): void {
     for (const b of state.bullets) {
+      // Boss bullets go downward (vy > 0)
+      if (b.vy > 0) {
+        this.drawSpriteGlow("bossBullet", b.x - SS / 2, b.y - SS / 2, COLORS.yellow);
+        continue;
+      }
       const isPilot = b.vx === 0;
       const key = isPilot ? "bulletPilot" : "bulletGunner";
       const color = isPilot ? COLORS.cyan : COLORS.magenta;
@@ -263,7 +268,15 @@ export class Renderer {
 
   private drawEnemies(state: GameState): void {
     for (const e of state.enemies) {
-      this.drawSpriteGlow("drone", e.x - SS / 2, e.y - SS / 2, COLORS.magenta);
+      if (e.type === 2) {
+        // Boss: draw at 2x sprite scale
+        const bossSize = getSpriteSize(SPRITE_SCALE * 2);
+        this.drawSpriteGlowScaled("boss", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.magenta, SPRITE_SCALE * 2);
+      } else if (e.type === 1) {
+        this.drawSpriteGlow("hunter", e.x - SS / 2, e.y - SS / 2, COLORS.yellow);
+      } else {
+        this.drawSpriteGlow("drone", e.x - SS / 2, e.y - SS / 2, COLORS.magenta);
+      }
     }
   }
 
@@ -296,8 +309,27 @@ export class Renderer {
     ctx.shadowBlur = 0;
   }
 
+  private drawSpriteGlowScaled(
+    key: SpriteKey,
+    x: number, y: number,
+    glowColor: string,
+    scale: number,
+  ): void {
+    const ctx = this.ctx;
+    const s = getSpriteSize(scale);
+    const cx = x + s / 2;
+    const cy = y + s / 2;
+    const r = s * 0.6;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, glowColor + "40");
+    grad.addColorStop(1, "transparent");
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    drawSprite(ctx, key, x, y, scale);
+  }
+
   private drawSpriteGlow(
-    key: "ship" | "turret" | "drone" | "bulletPilot" | "bulletGunner" | "explosion1" | "explosion2" | "powerup",
+    key: SpriteKey,
     x: number, y: number,
     glowColor: string,
   ): void {

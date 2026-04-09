@@ -136,7 +136,7 @@ describe("GameState", () => {
   describe("updateGameState — enemies", () => {
     it("moves drones downward over time", () => {
       const s = createInitialState();
-      s.enemies.push({ id: 1, x: 100, y: 50, hp: 25 });
+      s.enemies.push({ id: 1, type: 0, x: 100, y: 50, hp: 25 });
       s.nextEnemyId = 2;
       const next = updateGameState(s, 1, NO_INPUT);
       expect(next.enemies[0].y).toBeCloseTo(50 + ENEMY_DRONE.speed);
@@ -144,7 +144,7 @@ describe("GameState", () => {
 
     it("removes drones that fall off the bottom of the playfield", () => {
       const s = createInitialState();
-      s.enemies.push({ id: 1, x: 100, y: PLAYFIELD.height + 50, hp: 25 });
+      s.enemies.push({ id: 1, type: 0, x: 100, y: PLAYFIELD.height + 50, hp: 25 });
       s.nextEnemyId = 2;
       const next = updateGameState(s, 0.016, NO_INPUT);
       expect(next.enemies).toHaveLength(0);
@@ -155,7 +155,7 @@ describe("GameState", () => {
     it("destroys an enemy hit by a pilot bullet and adds score", () => {
       const s = createInitialState();
       s.ship.fireCooldown = 999; // prevent auto-fire from interfering
-      s.enemies.push({ id: 1, x: 100, y: 100, hp: 25 });
+      s.enemies.push({ id: 1, type: 0, x: 100, y: 100, hp: 25 });
       s.bullets.push({ id: 1, x: 100, y: 100, vx: 0, vy: -BULLET.pilotSpeed, life: 1 });
       s.nextEnemyId = 2;
       s.nextBulletId = 2;
@@ -167,7 +167,7 @@ describe("GameState", () => {
 
     it("damages the ship on enemy contact and removes the enemy", () => {
       const s = createInitialState();
-      s.enemies.push({ id: 1, x: s.ship.x, y: s.ship.y, hp: 25 });
+      s.enemies.push({ id: 1, type: 0, x: s.ship.x, y: s.ship.y, hp: 25 });
       s.nextEnemyId = 2;
       const next = updateGameState(s, 0.016, NO_INPUT);
       expect(next.enemies).toHaveLength(0);
@@ -177,7 +177,7 @@ describe("GameState", () => {
     it("triggers game over when ship HP reaches zero", () => {
       const s = createInitialState();
       s.ship.hp = ENEMY_DRONE.contactDamage; // one hit will kill
-      s.enemies.push({ id: 1, x: s.ship.x, y: s.ship.y, hp: 25 });
+      s.enemies.push({ id: 1, type: 0, x: s.ship.x, y: s.ship.y, hp: 25 });
       s.nextEnemyId = 2;
       const next = updateGameState(s, 0.016, NO_INPUT);
       expect(next.ship.hp).toBe(0);

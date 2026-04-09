@@ -38,19 +38,43 @@ export const BULLET = {
   gunnerDamage: 20,
 } as const;
 
+// Enemy type 0: Drone — flies straight down
 export const ENEMY_DRONE = {
-  width: 22,
-  height: 22,
-  radius: 12,
-  speed: 90,             // pixels per second, downward
+  type: 0 as const,
+  width: 22, height: 22, radius: 12,
+  speed: 90,
   maxHp: 25,
-  contactDamage: 15,     // damage to ship on collision
+  contactDamage: 15,
   scoreValue: 10,
 } as const;
 
+// Enemy type 1: Hunter — chases the ship
+export const ENEMY_HUNTER = {
+  type: 1 as const,
+  width: 22, height: 22, radius: 12,
+  speed: 70,
+  maxHp: 40,
+  contactDamage: 20,
+  scoreValue: 25,
+} as const;
+
+// Enemy type 2: Boss — large, tough, shoots back
+export const ENEMY_BOSS = {
+  type: 2 as const,
+  width: 48, height: 48, radius: 26,
+  speed: 30,
+  maxHp: 300,
+  contactDamage: 40,
+  scoreValue: 200,
+  fireInterval: 1.2,     // seconds between boss shots
+  bulletSpeed: 180,
+} as const;
+
 export const WAVE = {
-  spawnInterval: 1.4,    // seconds between drone spawns in wave 1
-  spawnEdgeMargin: 32,   // px from playfield edges
+  spawnInterval: 1.4,    // base seconds between spawns
+  spawnEdgeMargin: 32,
+  enemiesPerWave: 8,     // drones to kill before wave ends
+  bossEveryN: 5,         // boss appears every N waves
 } as const;
 
 // Family palette (subset used by Renderer)

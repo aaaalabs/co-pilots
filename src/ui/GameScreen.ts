@@ -208,6 +208,10 @@ export class GameScreen {
         </div>
       </div>
       <div class="hud-cell">
+        <div class="hud-label">Wave</div>
+        <div class="hud-value">${this.spawner.wave}</div>
+      </div>
+      <div class="hud-cell">
         <div class="hud-label">Score</div>
         <div class="hud-value">${this.state.score}</div>
       </div>

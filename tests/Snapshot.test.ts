@@ -25,10 +25,10 @@ describe("Snapshot", () => {
 
   it("includes enemies", () => {
     const state = createInitialState();
-    state.enemies.push({ id: 5, x: 100, y: 50, hp: 20 });
+    state.enemies.push({ id: 5, type: 0, x: 100, y: 50, hp: 20 });
     const snap = serializeSnapshot(state);
     expect(snap.enemies).toHaveLength(1);
-    expect(snap.enemies[0]).toEqual({ id: 5, x: 100, y: 50, hp: 20 });
+    expect(snap.enemies[0]).toEqual({ id: 5, type: 0, x: 100, y: 50, hp: 20 });
   });
 
   it("strips internal fields (cooldowns, nextIds)", () => {
@@ -48,7 +48,7 @@ describe("Snapshot", () => {
     state.ship.turretAngle = 1.5;
     state.score = 999;
     state.bullets.push({ id: 1, x: 10, y: 20, vx: 0, vy: -540, life: 1 });
-    state.enemies.push({ id: 2, x: 50, y: 30, hp: 25 });
+    state.enemies.push({ id: 2, type: 0, x: 50, y: 30, hp: 25 });
     const snap = serializeSnapshot(state);
     const restored = applySnapshot(snap);
     expect(restored.ship.x).toBe(200);

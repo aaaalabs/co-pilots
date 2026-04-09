@@ -1,4 +1,4 @@
-import { SHIP, BULLET, PLAYFIELD, ENEMY_DRONE } from "./constants";
+import { SHIP, BULLET, PLAYFIELD, ENEMY_DRONE, ENEMY_HUNTER, ENEMY_BOSS } from "./constants";
 import { circlesOverlap } from "./Collision";
 
 export type PilotInput = {
@@ -32,12 +32,13 @@ export type Bullet = {
   life: number;          // seconds remaining
 };
 
-// Forward-declared for Task 6; populated then.
 export type Enemy = {
   id: number;
+  type: number;      // 0=drone, 1=hunter, 2=boss
   x: number;
   y: number;
   hp: number;
+  fireTimer?: number; // boss only: seconds until next shot
 };
 
 export type GameState = {
@@ -157,22 +158,62 @@ export function updateGameState(
     b => b.life > 0 && b.y > -BULLET.pilotHeight && b.x > -20 && b.x < PLAYFIELD.width + 20,
   );
 
-  // Enemy step (drones fall straight down)
+  // Enemy movement (per type)
   for (const e of state.enemies) {
-    e.y += ENEMY_DRONE.speed * dt;
+    if (e.type === 1) {
+      // Hunter: chase the ship
+      const dx = ship.x - e.x;
+      const dy = ship.y - e.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 1) {
+        e.x += (dx / dist) * ENEMY_HUNTER.speed * dt;
+        e.y += (dy / dist) * ENEMY_HUNTER.speed * dt;
+      }
+    } else if (e.type === 2) {
+      // Boss: drift down slowly, park near top
+      if (e.y < 80) {
+        e.y += ENEMY_BOSS.speed * dt;
+      }
+      // Boss shoots at the ship
+      e.fireTimer = (e.fireTimer ?? ENEMY_BOSS.fireInterval) - dt;
+      if (e.fireTimer <= 0) {
+        e.fireTimer = ENEMY_BOSS.fireInterval;
+        const dx = ship.x - e.x;
+        const dy = ship.y - e.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 1) {
+          state.bullets.push({
+            id: state.nextBulletId++,
+            x: e.x,
+            y: e.y + ENEMY_BOSS.height / 2,
+            vx: (dx / dist) * ENEMY_BOSS.bulletSpeed,
+            vy: (dy / dist) * ENEMY_BOSS.bulletSpeed,
+            life: 3.0,
+          });
+        }
+      }
+    } else {
+      // Drone: straight down
+      e.y += ENEMY_DRONE.speed * dt;
+    }
   }
-  // Cull off-screen drones
-  state.enemies = state.enemies.filter(e => e.y < PLAYFIELD.height + ENEMY_DRONE.height);
+  // Cull off-screen enemies (not bosses parked at top)
+  state.enemies = state.enemies.filter(e => e.type === 2 || e.y < PLAYFIELD.height + 30);
 
   // Bullet vs enemy
   for (const e of state.enemies) {
+    const er = e.type === 2 ? ENEMY_BOSS.radius : ENEMY_DRONE.radius;
     for (const b of state.bullets) {
-      if (circlesOverlap(b.x, b.y, BULLET.radius, e.x, e.y, ENEMY_DRONE.radius)) {
-        e.hp -= BULLET.pilotDamage;
-        b.life = 0; // mark bullet for removal next frame
+      // Don't let boss bullets hit enemies
+      if (b.vy > 0) continue;
+      if (circlesOverlap(b.x, b.y, BULLET.radius, e.x, e.y, er)) {
+        const dmg = b.vx === 0 ? BULLET.pilotDamage : BULLET.gunnerDamage;
+        e.hp -= dmg;
+        b.life = 0;
         if (e.hp <= 0) {
-          state.score += ENEMY_DRONE.scoreValue;
-          break; // this enemy is dead, no more bullets need to check it
+          const sv = e.type === 2 ? ENEMY_BOSS.scoreValue : e.type === 1 ? ENEMY_HUNTER.scoreValue : ENEMY_DRONE.scoreValue;
+          state.score += sv;
+          break;
         }
       }
     }
@@ -182,8 +223,10 @@ export function updateGameState(
 
   // Enemy vs ship
   for (const e of state.enemies) {
-    if (circlesOverlap(state.ship.x, state.ship.y, SHIP.radius, e.x, e.y, ENEMY_DRONE.radius)) {
-      state.ship.hp = Math.max(0, state.ship.hp - ENEMY_DRONE.contactDamage);
+    const er = e.type === 2 ? ENEMY_BOSS.radius : ENEMY_DRONE.radius;
+    const cd = e.type === 2 ? ENEMY_BOSS.contactDamage : e.type === 1 ? ENEMY_HUNTER.contactDamage : ENEMY_DRONE.contactDamage;
+    if (circlesOverlap(ship.x, ship.y, SHIP.radius, e.x, e.y, er)) {
+      ship.hp = Math.max(0, ship.hp - cd);
       e.hp = 0;
     }
   }
