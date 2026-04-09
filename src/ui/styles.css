@@ -309,12 +309,42 @@ body::after {
   font-variant-numeric: tabular-nums;
 }
 
-.hud-value.warning {
-  color: var(--yellow);
-  text-shadow: 0 0 8px rgba(255, 255, 0, 0.5);
-}
-
 .hud-value.danger {
   color: var(--magenta);
   text-shadow: 0 0 8px rgba(255, 0, 170, 0.5);
+}
+
+.heat-bar {
+  width: 80px;
+  height: 10px;
+  background: var(--surface);
+  border: 1px solid rgba(0, 240, 240, 0.2);
+  overflow: hidden;
+}
+
+.heat-fill {
+  height: 100%;
+  background: var(--cyan);
+  transition: width 0.05s linear;
+  box-shadow: 0 0 6px rgba(0, 240, 240, 0.5);
+}
+
+.heat-bar.hot .heat-fill {
+  background: var(--yellow);
+  box-shadow: 0 0 8px rgba(255, 255, 0, 0.6);
+}
+
+.heat-bar.overheated {
+  border-color: var(--magenta);
+  animation: heatPulse 0.3s ease-in-out infinite;
+}
+
+.heat-bar.overheated .heat-fill {
+  background: var(--magenta);
+  box-shadow: 0 0 10px rgba(255, 0, 170, 0.7);
+}
+
+@keyframes heatPulse {
+  0%, 100% { box-shadow: 0 0 4px rgba(255, 0, 170, 0.3); }
+  50% { box-shadow: 0 0 12px rgba(255, 0, 170, 0.6); }
 }

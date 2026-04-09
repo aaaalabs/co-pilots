@@ -193,17 +193,19 @@ export class GameScreen {
 
   private renderHud(): void {
     const hpPercent = Math.round((this.state.ship.hp / SHIP.maxHp) * 100);
-    const heatPercent = Math.round(this.state.ship.heat * 100);
+    const heat = this.state.ship.heat;
     const hpDanger = hpPercent <= 30 ? "danger" : "";
-    const heatDanger = this.state.ship.overheated ? "danger" : heatPercent >= 70 ? "warning" : "";
+    const heatClass = this.state.ship.overheated ? "overheated" : heat >= 0.7 ? "hot" : "";
     this.hudEl.innerHTML = `
       <div class="hud-cell">
         <div class="hud-label">HP</div>
         <div class="hud-value ${hpDanger}">${hpPercent}</div>
       </div>
       <div class="hud-cell">
-        <div class="hud-label">${this.state.ship.overheated ? "COOL" : "HEAT"}</div>
-        <div class="hud-value ${heatDanger}">${heatPercent}</div>
+        <div class="hud-label">HEAT</div>
+        <div class="heat-bar ${heatClass}">
+          <div class="heat-fill" style="width:${Math.round(heat * 100)}%"></div>
+        </div>
       </div>
       <div class="hud-cell">
         <div class="hud-label">Score</div>
