@@ -38,6 +38,8 @@ export class GameScreen {
   private inputTimer = 0;
   private remoteGunnerInput: GunnerInput | null = null;
   private localAimAngle = 0;
+  private frameDt = 0;
+  private prevEnemyPositions = new Map<number, { x: number; y: number }>();
 
   constructor(
     parent: HTMLElement,
@@ -95,13 +97,13 @@ export class GameScreen {
   }
 
   private handleFrame = (nowMs: number): void => {
-    const frameDt = Math.min((nowMs - this.lastFrameMs) / 1000, MAX_FRAME_DT);
+    this.frameDt = Math.min((nowMs - this.lastFrameMs) / 1000, MAX_FRAME_DT);
     this.lastFrameMs = nowMs;
 
     if (this.role === "pilot") {
-      this.updateHost(frameDt);
+      this.updateHost(this.frameDt);
     } else {
-      this.updateGunner(frameDt);
+      this.updateGunner(this.frameDt);
     }
 
     this.render();
@@ -160,11 +162,23 @@ export class GameScreen {
   }
 
   private render(): void {
+    // Detect killed enemies → spawn explosion particles at their last position
+    const currentIds = new Set(this.state.enemies.map(e => e.id));
+    for (const [id, pos] of this.prevEnemyPositions) {
+      if (!currentIds.has(id)) {
+        this.renderer.spawnExplosionAt(pos.x, pos.y);
+      }
+    }
+    this.prevEnemyPositions.clear();
+    for (const e of this.state.enemies) {
+      this.prevEnemyPositions.set(e.id, { x: e.x, y: e.y });
+    }
+
     // For the gunner: override turret angle with local aim for instant feedback
     if (this.role === "gunner") {
       this.state.ship.turretAngle = this.localAimAngle;
     }
-    this.renderer.draw(this.state);
+    this.renderer.draw(this.state, this.frameDt);
     this.renderHud();
   }
 
