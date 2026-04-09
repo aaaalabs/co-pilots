@@ -8,6 +8,8 @@ import { PeerConnection } from "../network/PeerConnection";
 import { Message } from "../network/Protocol";
 import { serializeSnapshot, applySnapshot } from "../network/Snapshot";
 import { Role } from "../network/Protocol";
+import { SoundEngine } from "../audio/SoundEngine";
+import { MusicEngine } from "../audio/MusicEngine";
 
 const FIXED_DT = 1 / 60;
 const MAX_FRAME_DT = 0.1;
@@ -40,6 +42,11 @@ export class GameScreen {
   private localAimAngle = 0;
   private frameDt = 0;
   private prevEnemyPositions = new Map<number, { x: number; y: number }>();
+  private sound = new SoundEngine();
+  private music = new MusicEngine();
+  private prevBulletCount = 0;
+  private prevWave = 1;
+  private prevOverheated = false;
 
   constructor(
     parent: HTMLElement,
@@ -80,6 +87,7 @@ export class GameScreen {
       this.mouse = new MouseControls(this.canvas);
     }
 
+    this.music.start();
     this.lastFrameMs = performance.now();
     this.rafId = requestAnimationFrame(this.handleFrame);
   }
@@ -89,6 +97,8 @@ export class GameScreen {
     this.rafId = null;
     this.keyboard?.destroy();
     this.mouse?.destroy();
+    this.music.stop();
+    this.sound.stopAll();
     this.container.remove();
   }
 
@@ -171,17 +181,48 @@ export class GameScreen {
   }
 
   private render(): void {
-    // Detect killed enemies → spawn explosion particles at their last position
+    // Detect killed enemies → explosion particles + sound
     const currentIds = new Set(this.state.enemies.map(e => e.id));
     for (const [id, pos] of this.prevEnemyPositions) {
       if (!currentIds.has(id)) {
         this.renderer.spawnExplosionAt(pos.x, pos.y);
+        this.sound.play("enemyKill");
       }
     }
     this.prevEnemyPositions.clear();
     for (const e of this.state.enemies) {
       this.prevEnemyPositions.set(e.id, { x: e.x, y: e.y });
     }
+
+    // Detect new bullets → shooting sounds
+    const bulletCount = this.state.bullets.length;
+    if (bulletCount > this.prevBulletCount) {
+      const newest = this.state.bullets[this.state.bullets.length - 1];
+      if (newest.vy > 0) {
+        this.sound.play("bossShoot");
+      } else if (newest.vx === 0) {
+        this.sound.play("pilotShoot");
+      } else {
+        this.sound.play("gunnerShoot");
+      }
+    }
+    this.prevBulletCount = bulletCount;
+
+    // Detect wave change
+    if (this.spawner.wave > this.prevWave) {
+      this.sound.play("waveStart");
+      // Speed up music slightly each wave
+      this.music.setBpm(100 + (this.spawner.wave - 1) * 5);
+      this.prevWave = this.spawner.wave;
+    }
+
+    // Detect overheat state change
+    if (this.state.ship.overheated && !this.prevOverheated) {
+      this.sound.play("overheat");
+    } else if (!this.state.ship.overheated && this.prevOverheated) {
+      this.sound.play("coolReady");
+    }
+    this.prevOverheated = this.state.ship.overheated;
 
     // For the gunner: override turret angle with local aim for instant feedback
     if (this.role === "gunner") {
@@ -219,6 +260,8 @@ export class GameScreen {
   }
 
   private handleGameOver(): void {
+    this.music.stop();
+    this.sound.gameOver();
     this.canvas.style.cursor = "pointer";
     this.canvas.addEventListener("click", () => this.callbacks.onExit(), { once: true });
   }
