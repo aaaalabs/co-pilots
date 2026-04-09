@@ -222,7 +222,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const outDir = join(__dirname, "../public/sprites");
-const SCALE = 8; // 8×8 → 64×64 preview PNGs
+const SCALE = 32; // 8×8 → 256×256 preview PNGs
 
 for (const [name, grid] of Object.entries(SPRITES)) {
   const { width, height, pixels } = spriteToPixels(grid, SCALE);
