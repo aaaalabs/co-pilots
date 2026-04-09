@@ -72,6 +72,10 @@ export class GameScreen {
 
     if (role === "pilot") {
       this.keyboard = new KeyboardControls();
+      // Solo mode: also enable mouse for gunner aiming
+      if (!peer) {
+        this.mouse = new MouseControls(this.canvas);
+      }
     } else {
       this.mouse = new MouseControls(this.canvas);
     }
@@ -117,12 +121,17 @@ export class GameScreen {
   };
 
   private updateHost(frameDt: number): void {
+    // Solo mode: read local mouse as gunner input
+    const gunnerInput = this.mouse
+      ? this.mouse.getGunnerInput(this.state.ship.x, this.state.ship.y)
+      : this.remoteGunnerInput ?? undefined;
+
     this.accumulator += frameDt;
     while (this.accumulator >= FIXED_DT) {
       const pilotInput = this.keyboard!.getPilotInput();
       tickWaveSpawner(this.spawner, this.state, FIXED_DT);
       this.state = updateGameState(
-        this.state, FIXED_DT, pilotInput, this.remoteGunnerInput ?? undefined,
+        this.state, FIXED_DT, pilotInput, gunnerInput,
       );
       this.tick++;
       this.accumulator -= FIXED_DT;
