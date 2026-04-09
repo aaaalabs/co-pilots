@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createInitialState, updateGameState, PilotInput } from "../src/game/GameState";
+import { createInitialState, updateGameState, PilotInput, GunnerInput } from "../src/game/GameState";
 import { SHIP, PLAYFIELD, BULLET, ENEMY_DRONE } from "../src/game/constants";
 
 const NO_INPUT: PilotInput = { moveX: 0, moveY: 0, fire: false };
@@ -123,7 +123,7 @@ describe("GameState", () => {
     it("destroys an enemy hit by a pilot bullet and adds score", () => {
       const s = createInitialState();
       s.enemies.push({ id: 1, x: 100, y: 100, hp: 25 });
-      s.bullets.push({ id: 1, x: 100, y: 100, vy: -BULLET.pilotSpeed, life: 1 });
+      s.bullets.push({ id: 1, x: 100, y: 100, vx: 0, vy: -BULLET.pilotSpeed, life: 1 });
       s.nextEnemyId = 2;
       s.nextBulletId = 2;
       const next = updateGameState(s, 0.016, NO_INPUT);
@@ -149,6 +149,46 @@ describe("GameState", () => {
       const next = updateGameState(s, 0.016, NO_INPUT);
       expect(next.ship.hp).toBe(0);
       expect(next.gameOver).toBe(true);
+    });
+  });
+
+  describe("updateGameState — gunner", () => {
+    const gunnerInput = (aim: number, fire: boolean): GunnerInput => ({ aimAngle: aim, fire });
+
+    it("updates turret angle from gunner input", () => {
+      const s = createInitialState();
+      const next = updateGameState(s, 0.016, NO_INPUT, gunnerInput(Math.PI / 2, false));
+      expect(next.ship.turretAngle).toBeCloseTo(Math.PI / 2);
+    });
+
+    it("spawns a gunner bullet when firing", () => {
+      const s = createInitialState();
+      const next = updateGameState(s, 0.016, NO_INPUT, gunnerInput(0, true));
+      expect(next.bullets).toHaveLength(1);
+      // Angle 0 = up → vy should be negative, vx should be ~0
+      expect(next.bullets[0].vy).toBeLessThan(0);
+      expect(next.bullets[0].vx).toBeCloseTo(0, 1);
+    });
+
+    it("gunner bullets travel at the aimed angle", () => {
+      const s = createInitialState();
+      const angle = Math.PI / 2; // pointing right
+      const next = updateGameState(s, 0.016, NO_INPUT, gunnerInput(angle, true));
+      expect(next.bullets[0].vx).toBeCloseTo(BULLET.gunnerSpeed, 0);
+      expect(next.bullets[0].vy).toBeCloseTo(0, 0);
+    });
+
+    it("respects gunner fire cooldown", () => {
+      let s = createInitialState();
+      s = updateGameState(s, 0.016, NO_INPUT, gunnerInput(0, true));
+      s = updateGameState(s, 0.016, NO_INPUT, gunnerInput(0, true));
+      expect(s.bullets).toHaveLength(1); // second shot blocked
+    });
+
+    it("pilot and gunner can fire independently", () => {
+      let s = createInitialState();
+      s = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true }, gunnerInput(Math.PI, true));
+      expect(s.bullets).toHaveLength(2); // one pilot bullet, one gunner bullet
     });
   });
 });

@@ -7,17 +7,25 @@ export type PilotInput = {
   fire: boolean;
 };
 
+export type GunnerInput = {
+  aimAngle: number;    // radians, 0 = up, clockwise positive
+  fire: boolean;
+};
+
 export type Ship = {
   x: number;
   y: number;
   hp: number;
   fireCooldown: number;  // remaining cooldown in seconds
+  turretAngle: number;
+  gunnerFireCooldown: number;
 };
 
 export type Bullet = {
   id: number;
   x: number;
   y: number;
+  vx: number;
   vy: number;
   life: number;          // seconds remaining
 };
@@ -47,6 +55,8 @@ export function createInitialState(): GameState {
       y: SHIP.startY,
       hp: SHIP.maxHp,
       fireCooldown: 0,
+      turretAngle: 0,
+      gunnerFireCooldown: 0,
     },
     bullets: [],
     enemies: [],
@@ -61,6 +71,7 @@ export function updateGameState(
   state: GameState,
   dt: number,
   input: PilotInput,
+  gunnerInput?: GunnerInput,
 ): GameState {
   if (state.gameOver) return state;
 
@@ -93,19 +104,40 @@ export function updateGameState(
       id: state.nextBulletId++,
       x: ship.x,
       y: ship.y - SHIP.bodyHeight / 2,
+      vx: 0,
       vy: -BULLET.pilotSpeed,
       life: BULLET.maxLifetime,
     });
     ship.fireCooldown = SHIP.fireCooldown;
   }
 
+  // Gunner input
+  if (gunnerInput) {
+    ship.turretAngle = gunnerInput.aimAngle;
+    ship.gunnerFireCooldown = Math.max(0, ship.gunnerFireCooldown - dt);
+    if (gunnerInput.fire && ship.gunnerFireCooldown <= 0) {
+      const vx = Math.sin(ship.turretAngle) * BULLET.gunnerSpeed;
+      const vy = -Math.cos(ship.turretAngle) * BULLET.gunnerSpeed;
+      state.bullets.push({
+        id: state.nextBulletId++,
+        x: ship.x,
+        y: ship.y - SHIP.bodyHeight / 2,
+        vx,
+        vy,
+        life: BULLET.maxLifetime,
+      });
+      ship.gunnerFireCooldown = SHIP.gunnerFireCooldown;
+    }
+  }
+
   // Bullet step + lifetime decay
   for (const b of state.bullets) {
+    b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.life -= dt;
   }
   state.bullets = state.bullets.filter(
-    b => b.life > 0 && b.y > -BULLET.pilotHeight,
+    b => b.life > 0 && b.y > -BULLET.pilotHeight && b.x > -20 && b.x < PLAYFIELD.width + 20,
   );
 
   // Enemy step (drones fall straight down)

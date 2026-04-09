@@ -17,6 +17,7 @@ export const SHIP = {
   speed: 220,            // pixels per second
   maxHp: 100,
   fireCooldown: 0.18,    // seconds between shots
+  gunnerFireCooldown: 0.25, // seconds between gunner shots
 } as const;
 
 export const BULLET = {
@@ -26,6 +27,10 @@ export const BULLET = {
   pilotDamage: 25,
   radius: 4,             // collision radius (treated as circle)
   maxLifetime: 2.0,      // seconds before despawn
+  gunnerSpeed: 480,        // pixels per second
+  gunnerWidth: 5,
+  gunnerHeight: 5,
+  gunnerDamage: 20,
 } as const;
 
 export const ENEMY_DRONE = {
