@@ -302,10 +302,18 @@ export class Renderer {
     glowColor: string,
   ): void {
     const ctx = this.ctx;
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = glowColor;
+    // Radial glow behind the sprite (not shadowBlur — that creates box artifacts on drawImage)
+    const cx = x + SS / 2;
+    const cy = y + SS / 2;
+    const r = SS * 0.8;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, glowColor.startsWith("#")
+      ? glowColor + "40"  // ~25% alpha for hex colors
+      : glowColor);
+    grad.addColorStop(1, "transparent");
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    // Sprite on top (no shadow)
     drawSprite(ctx, key, x, y, SPRITE_SCALE);
-    ctx.shadowBlur = 0;
-    ctx.shadowColor = "transparent";
   }
 }
