@@ -98,10 +98,8 @@ function sendReady(): void {
 function handleMessage(msg: Message): void {
   if (msg.type === "ready") {
     remoteRole = msg.role;
-    // If host sees the joiner for the first time, transition host lobby to joined
     if (isHost && lobby) {
       lobby.setJoined(true);
-      // Re-send our own ready so joiner has our info
       sendReady();
     }
     lobby?.setPeerReady(true);
@@ -112,6 +110,8 @@ function handleMessage(msg: Message): void {
     }
   } else if (msg.type === "start") {
     handleGameStart(msg.difficulty);
+  } else if (gameScreen && (msg.type === "snapshot" || msg.type === "input")) {
+    gameScreen.handleNetworkMessage(msg);
   }
 }
 
@@ -128,9 +128,10 @@ function handleStartClick(): void {
 function handleGameStart(_difficulty: Difficulty): void {
   lobby?.destroy();
   lobby = null;
+  const role = localSettings.role;
   gameScreen = new GameScreen(app, {
     onExit: () => showLobby(),
-  });
+  }, role, peer);
 }
 
 function handleDisconnect(): void {
