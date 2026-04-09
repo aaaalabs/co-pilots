@@ -233,12 +233,13 @@ const outDir = join(__dirname, "../public/sprites");
 const SCALE = 32; // 8×8 → 256×256 preview PNGs
 
 for (const [name, grid] of Object.entries(SPRITES)) {
-  // Preview on dark background (shows all 5 colors as in-game)
-  const { width, height, pixels } = spriteToPixels(grid, SCALE, true);
-  const png = createPng(width, height, pixels);
-  const path = join(outDir, `${name}.png`);
-  writeFileSync(path, png);
-  console.log(`${name}.png (${width}×${height})`);
+  // Transparent version (usable as asset)
+  const { width, height, pixels } = spriteToPixels(grid, SCALE, false);
+  writeFileSync(join(outDir, `${name}.png`), createPng(width, height, pixels));
+  // Dark-bg version (for visual inspection)
+  const dark = spriteToPixels(grid, SCALE, true);
+  writeFileSync(join(outDir, `${name}_preview.png`), createPng(dark.width, dark.height, dark.pixels));
+  console.log(`${name}.png + ${name}_preview.png (${width}×${height})`);
 }
 
 // Also generate the combined sheet at 1x (64×8)
