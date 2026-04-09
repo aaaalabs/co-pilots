@@ -1,9 +1,11 @@
 import { PeerConnection } from "./network/PeerConnection";
+import { LeaderboardClient } from "./network/LeaderboardClient";
 import { Message, Difficulty, Role } from "./network/Protocol";
 import { LobbyScreen, LobbySettings } from "./ui/LobbyScreen";
 import { GameScreen } from "./ui/GameScreen";
 
 const app = document.getElementById("app")!;
+const leaderboard = new LeaderboardClient();
 
 let lobby: LobbyScreen | null = null;
 let gameScreen: GameScreen | null = null;
@@ -20,15 +22,12 @@ function showLobby(): void {
   cleanup();
   lobby = new LobbyScreen(app, {
     onSolo: handleSolo,
-    onCreateRoom: handleCreateRoom,
-    onJoinRoom: handleJoinRoom,
+    onChallenge: handleChallenge,
+    onCancelChallenge: handleCancelChallenge,
+    onAcceptChallenge: handleAcceptChallenge,
     onSettingsChange: handleSettingsChange,
     onStart: handleStartClick,
   });
-}
-
-function handleSolo(): void {
-  handleGameStart("normal");
 }
 
 function cleanup(): void {
@@ -42,18 +41,28 @@ function cleanup(): void {
   isHost = false;
 }
 
-async function handleCreateRoom(): Promise<void> {
+function handleSolo(): void {
+  localSettings.playerName = lobby?.selectedPlayer ?? "Player";
+  handleGameStart("normal");
+}
+
+async function handleChallenge(): Promise<void> {
   isHost = true;
   localSettings.role = "pilot";
+  localSettings.playerName = lobby?.selectedPlayer ?? "Player";
+
   peer = new PeerConnection();
   peer.setHandlers({
     onMessage: handleMessage,
     onStatus: (s) => lobby?.setStatus(s),
     onDisconnect: handleDisconnect,
   });
+
   try {
-    const code = await peer.createRoom();
-    lobby?.setRoomCode(code);
+    const peerId = await peer.initPeer();
+    await leaderboard.postChallenge(localSettings.playerName, peerId);
+    lobby?.setWaiting(true);
+    lobby?.setStatus("Warte auf Mitspieler...");
   } catch (err) {
     lobby?.setStatus(`Error: ${(err as Error).message}`);
     peer?.destroy();
@@ -61,17 +70,34 @@ async function handleCreateRoom(): Promise<void> {
   }
 }
 
-async function handleJoinRoom(code: string): Promise<void> {
+function handleCancelChallenge(): void {
+  leaderboard.cancelChallenge(localSettings.playerName).catch(() => {});
+  peer?.destroy();
+  peer = null;
+  lobby?.setWaiting(false);
+  lobby?.setStatus("");
+}
+
+async function handleAcceptChallenge(opponent: string): Promise<void> {
   isHost = false;
   localSettings.role = "gunner";
+  localSettings.playerName = lobby?.selectedPlayer ?? "Player";
+
+  const opponentPeerId = await leaderboard.acceptChallenge(localSettings.playerName, opponent);
+  if (!opponentPeerId) {
+    lobby?.setStatus(`${opponent} ist nicht mehr verfügbar`);
+    return;
+  }
+
   peer = new PeerConnection();
   peer.setHandlers({
     onMessage: handleMessage,
     onStatus: (s) => lobby?.setStatus(s),
     onDisconnect: handleDisconnect,
   });
+
   try {
-    await peer.joinRoom(code);
+    await peer.connectToPeer(opponentPeerId);
     lobby?.setJoined(false);
     sendReady();
   } catch (err) {
@@ -99,14 +125,16 @@ function handleMessage(msg: Message): void {
   if (msg.type === "ready") {
     remoteRole = msg.role;
     if (isHost && lobby) {
+      // Cancel the challenge listing when someone connects
+      leaderboard.cancelChallenge(localSettings.playerName).catch(() => {});
       lobby.setJoined(true);
       sendReady();
     }
     lobby?.setPeerReady(true);
     if (remoteRole === localSettings.role) {
-      lobby?.setStatus(`Role conflict: both are ${localSettings.role}`);
+      lobby?.setStatus(`Rollenkonflikt: beide sind ${localSettings.role}`);
     } else {
-      lobby?.setStatus(`Co-pilot ready (${msg.player || "Player"})`);
+      lobby?.setStatus(`Co-pilot bereit (${msg.player || "Player"})`);
     }
   } else if (msg.type === "start") {
     handleGameStart(msg.difficulty);
@@ -118,7 +146,7 @@ function handleMessage(msg: Message): void {
 function handleStartClick(): void {
   if (!isHost || !peer) return;
   if (remoteRole === localSettings.role) {
-    lobby?.setStatus("Can't start: role conflict");
+    lobby?.setStatus("Kann nicht starten: Rollenkonflikt");
     return;
   }
   peer.send({ type: "start", difficulty: localSettings.difficulty });

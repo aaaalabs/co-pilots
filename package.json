@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@upstash/redis": "^1.37.0",
+    "@vercel/node": "^5.7.2",
     "peerjs": "^1.5.5"
   },
   "devDependencies": {

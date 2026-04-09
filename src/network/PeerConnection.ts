@@ -106,6 +106,66 @@ export class PeerConnection {
     });
   }
 
+  async initPeer(): Promise<string> {
+    await this.ensureIce();
+    return new Promise((resolve, reject) => {
+      this.peer = createPeerWithIce(this.iceServers);
+      this.peer.on("open", (id) => {
+        this.peer!.on("connection", (conn) => {
+          this.conn = conn;
+          if (conn.open) {
+            this.setupConnection();
+          } else {
+            conn.on("open", () => this.setupConnection());
+          }
+        });
+        resolve(id);
+      });
+      this.peer.on("error", reject);
+    });
+  }
+
+  async connectToPeer(peerId: string): Promise<void> {
+    await this.ensureIce();
+    this.onStatus?.("Connecting...");
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error("Connection timed out"));
+      }, CONNECTION_TIMEOUT);
+
+      if (!this.peer) {
+        this.peer = createPeerWithIce(this.iceServers);
+        this.peer.on("open", () => {
+          this.conn = this.peer!.connect(peerId);
+          this.conn.on("open", () => {
+            clearTimeout(timeout);
+            this.setupConnection();
+            resolve();
+          });
+          this.conn.on("error", (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          });
+        });
+        this.peer.on("error", (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+      } else {
+        this.conn = this.peer.connect(peerId);
+        this.conn.on("open", () => {
+          clearTimeout(timeout);
+          this.setupConnection();
+          resolve();
+        });
+        this.conn.on("error", (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+      }
+    });
+  }
+
   send(msg: Message): void {
     if (this.conn?.open) {
       this.conn.send(encodeMessage(msg));
