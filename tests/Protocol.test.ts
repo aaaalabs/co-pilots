@@ -39,4 +39,29 @@ describe("Protocol", () => {
   it("returns null for missing type field", () => {
     expect(decodeMessage(JSON.stringify({ foo: "bar" }))).toBeNull();
   });
+
+  it("round-trips a snapshot message", () => {
+    const msg: Message = {
+      type: "snapshot",
+      tick: 42,
+      state: {
+        ship: { x: 100, y: 200, hp: 80, turretAngle: 1.5 },
+        bullets: [{ id: 1, x: 10, y: 20, vx: 0, vy: -540 }],
+        enemies: [{ id: 1, x: 50, y: 30, hp: 25 }],
+        score: 120,
+        gameOver: false,
+      },
+    };
+    expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+  });
+
+  it("round-trips an input message", () => {
+    const msg: Message = { type: "input", tick: 10, aim: 1.2, fire: true };
+    expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+  });
+
+  it("round-trips a gameOver message", () => {
+    const msg: Message = { type: "gameOver", score: 350 };
+    expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+  });
 });
