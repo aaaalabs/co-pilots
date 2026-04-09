@@ -9,16 +9,18 @@ LAYOUT:
 - Grid: 8 columns × 1 row
 - Each cell: 8×8 pixels
 - Total image size: 64×8 pixels
-- Background: fully transparent (alpha = 0)
+- Background: solid #00FF00 (chroma key green) — will be removed programmatically to create transparency
 - NO spacing between cells — sprites packed edge to edge
 
-PALETTE (strict, no other colors):
+PALETTE (strict, no other colors allowed):
 - Cyan: #00F0F0 (player/friendly elements)
 - Magenta: #FF00AA (enemy/danger elements)
 - Yellow: #FFFF00 (powerups)
 - White: #FFFFFF (highlights only, max 1-2 pixels per sprite)
 - Dark: #050510 (outlines/shadows, optional, max 2-3 pixels per sprite)
-- Transparent: everything else
+- Green: #00FF00 (background ONLY — this is the chroma key, NOT a sprite color)
+
+IMPORTANT: Every pixel that is NOT part of a sprite must be exactly #00FF00. Do NOT use any shade of green in the sprites themselves.
 
 STYLE RULES:
 - NO anti-aliasing, NO gradients, NO sub-pixel rendering, NO dithering
@@ -60,18 +62,28 @@ Plus/cross or star shape. Main color: #FFFF00. One #FFFFFF highlight.
 
 CRITICAL:
 - The output must be EXACTLY 64×8 pixels
-- Use only the 5 listed colors + transparent
-- Pixel-perfect edges, no blur
-- PNG format with alpha channel
+- Use only the 5 sprite colors + #00FF00 background — no other colors
+- Pixel-perfect edges, no blur, no anti-aliasing on edges
+- PNG format
 ```
 
 ## Usage
 
-Paste the prompt into an image generation tool (e.g. ChatGPT with DALL-E, Midjourney, or a pixel-art-specific generator). The output is a 64×8 sprite sheet.
+Paste the prompt into an image generation tool (e.g. ChatGPT with DALL-E, Midjourney, or a pixel-art-specific generator). The output is a 64×8 sprite sheet with #00FF00 green background.
 
 ## Integration
 
-Once generated, save as `public/sprites/sheet.png`. The Renderer loads it once and draws sprites via `ctx.drawImage(sheet, srcX, 0, 8, 8, destX, destY, renderSize, renderSize)` where `srcX = cellIndex * 8`.
+Once generated, save the raw output as `public/sprites/sheet-raw.png`. Then run the chroma key removal:
+
+```bash
+# Option A: ImageMagick (if installed)
+magick public/sprites/sheet-raw.png -transparent "#00FF00" public/sprites/sheet.png
+
+# Option B: In-browser at load time (no tooling needed)
+# The Renderer can strip #00FF00 pixels on first load using getImageData/putImageData
+```
+
+The Renderer loads `sheet.png` once and draws sprites via `ctx.drawImage(sheet, srcX, 0, 8, 8, destX, destY, renderSize, renderSize)` where `srcX = cellIndex * 8`.
 
 ## Sprite Index
 
