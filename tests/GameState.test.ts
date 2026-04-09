@@ -58,34 +58,35 @@ describe("GameState", () => {
     });
   });
 
-  describe("updateGameState — firing", () => {
-    it("spawns a bullet on fire when cooldown is ready", () => {
+  describe("updateGameState — pilot auto-fire", () => {
+    it("auto-fires a bullet when cooldown is ready", () => {
       const s = createInitialState();
-      const next = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true });
+      const next = updateGameState(s, 0.016, NO_INPUT);
       expect(next.bullets).toHaveLength(1);
       expect(next.bullets[0].vy).toBeLessThan(0);
+      expect(next.bullets[0].vx).toBe(0);
     });
 
     it("respects the fire cooldown", () => {
       let s = createInitialState();
-      s = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true });
+      s = updateGameState(s, 0.016, NO_INPUT);
       // Immediately try again — cooldown should block
-      s = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true });
+      s = updateGameState(s, 0.016, NO_INPUT);
       expect(s.bullets).toHaveLength(1);
     });
 
     it("can fire again after cooldown elapses", () => {
       let s = createInitialState();
-      s = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true });
+      s = updateGameState(s, 0.016, NO_INPUT);
       // Advance time past cooldown
-      s = updateGameState(s, SHIP.fireCooldown + 0.01, { moveX: 0, moveY: 0, fire: false });
-      s = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true });
+      s = updateGameState(s, SHIP.fireCooldown + 0.01, NO_INPUT);
+      s = updateGameState(s, 0.016, NO_INPUT);
       expect(s.bullets).toHaveLength(2);
     });
 
     it("bullets despawn after maxLifetime", () => {
       let s = createInitialState();
-      s = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true });
+      s = updateGameState(s, 0.016, NO_INPUT);
       expect(s.bullets).toHaveLength(1);
       // Advance well beyond bullet lifetime
       s = updateGameState(s, BULLET.maxLifetime + 0.5, NO_INPUT);
@@ -94,7 +95,7 @@ describe("GameState", () => {
 
     it("bullets travel upward with the configured speed", () => {
       let s = createInitialState();
-      s = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true });
+      s = updateGameState(s, 0.016, NO_INPUT);
       const startY = s.bullets[0].y;
       s = updateGameState(s, 0.5, NO_INPUT);
       expect(s.bullets[0].y).toBeCloseTo(startY - BULLET.pilotSpeed * 0.5, 1);
@@ -122,6 +123,7 @@ describe("GameState", () => {
   describe("updateGameState — collisions", () => {
     it("destroys an enemy hit by a pilot bullet and adds score", () => {
       const s = createInitialState();
+      s.ship.fireCooldown = 999; // prevent auto-fire from interfering
       s.enemies.push({ id: 1, x: 100, y: 100, hp: 25 });
       s.bullets.push({ id: 1, x: 100, y: 100, vx: 0, vy: -BULLET.pilotSpeed, life: 1 });
       s.nextEnemyId = 2;
@@ -163,6 +165,7 @@ describe("GameState", () => {
 
     it("spawns a gunner bullet when firing", () => {
       const s = createInitialState();
+      s.ship.fireCooldown = 999; // suppress pilot auto-fire
       const next = updateGameState(s, 0.016, NO_INPUT, gunnerInput(0, true));
       expect(next.bullets).toHaveLength(1);
       // Angle 0 = up → vy should be negative, vx should be ~0
@@ -172,6 +175,7 @@ describe("GameState", () => {
 
     it("gunner bullets travel at the aimed angle", () => {
       const s = createInitialState();
+      s.ship.fireCooldown = 999; // suppress pilot auto-fire
       const angle = Math.PI / 2; // pointing right
       const next = updateGameState(s, 0.016, NO_INPUT, gunnerInput(angle, true));
       expect(next.bullets[0].vx).toBeCloseTo(BULLET.gunnerSpeed, 0);
@@ -180,6 +184,7 @@ describe("GameState", () => {
 
     it("respects gunner fire cooldown", () => {
       let s = createInitialState();
+      s.ship.fireCooldown = 999; // suppress pilot auto-fire
       s = updateGameState(s, 0.016, NO_INPUT, gunnerInput(0, true));
       s = updateGameState(s, 0.016, NO_INPUT, gunnerInput(0, true));
       expect(s.bullets).toHaveLength(1); // second shot blocked

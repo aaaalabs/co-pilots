@@ -98,8 +98,8 @@ export function updateGameState(
   // Cooldown tick
   ship.fireCooldown = Math.max(0, ship.fireCooldown - dt);
 
-  // Fire
-  if (input.fire && ship.fireCooldown <= 0) {
+  // Pilot auto-fire (always fires forward when cooldown ready)
+  if (ship.fireCooldown <= 0) {
     state.bullets.push({
       id: state.nextBulletId++,
       x: ship.x,
