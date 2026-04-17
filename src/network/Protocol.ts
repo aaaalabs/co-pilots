@@ -5,9 +5,9 @@ export type Difficulty = "easy" | "normal" | "hard";
 
 export type SnapshotData = {
   ship: { x: number; y: number; hp: number; turretAngle: number };
-  bullets: Array<{ id: number; x: number; y: number; vx: number; vy: number; enemy?: boolean }>;
+  bullets: Array<{ id: number; x: number; y: number; vx: number; vy: number; damage?: number; enemy?: boolean }>;
   enemies: Array<{ id: number; type: number; x: number; y: number; hp: number }>;
-  pickups: Array<{ id: number; kind: "heart"; x: number; y: number }>;
+  pickups: Array<{ id: number; kind: "heart" | "bonus"; x: number; y: number }>;
   score: number;
   wave: number;
   gameOver: boolean;

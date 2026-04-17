@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { serializeSnapshot, applySnapshot } from "../src/network/Snapshot";
 import { createInitialState } from "../src/game/GameState";
+import { BULLET } from "../src/game/constants";
 
 describe("Snapshot", () => {
   it("round-trips a clean initial state", () => {
@@ -17,10 +18,10 @@ describe("Snapshot", () => {
 
   it("includes bullets with vx and vy", () => {
     const state = createInitialState();
-    state.bullets.push({ id: 1, x: 10, y: 20, vx: 3, vy: -540, life: 1 });
+    state.bullets.push({ id: 1, x: 10, y: 20, vx: 3, vy: -540, life: 1, damage: BULLET.gunnerDamage });
     const snap = serializeSnapshot(state, 1);
     expect(snap.bullets).toHaveLength(1);
-    expect(snap.bullets[0]).toEqual({ id: 1, x: 10, y: 20, vx: 3, vy: -540 });
+    expect(snap.bullets[0]).toEqual({ id: 1, x: 10, y: 20, vx: 3, vy: -540, damage: BULLET.gunnerDamage });
   });
 
   it("includes enemies", () => {
@@ -47,7 +48,7 @@ describe("Snapshot", () => {
     state.ship.hp = 50;
     state.ship.turretAngle = 1.5;
     state.score = 999;
-    state.bullets.push({ id: 1, x: 10, y: 20, vx: 0, vy: -540, life: 1 });
+    state.bullets.push({ id: 1, x: 10, y: 20, vx: 0, vy: -540, life: 1, damage: BULLET.pilotDamage });
     state.enemies.push({ id: 2, type: 0, x: 50, y: 30, hp: 25 });
     const snap = serializeSnapshot(state, 1);
     const restored = applySnapshot(snap);

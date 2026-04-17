@@ -15,6 +15,7 @@ export function serializeSnapshot(state: GameState, wave: number): SnapshotData 
       y: b.y,
       vx: b.vx,
       vy: b.vy,
+      damage: b.damage,
       ...(b.enemy ? { enemy: true } : {}),
     })),
     enemies: state.enemies.map(e => ({
@@ -47,6 +48,7 @@ export function applySnapshot(snap: SnapshotData): GameState {
       heat: 0,
       overheated: false,
       gunnerFireCooldown: 0,
+      upgradeActive: false,
     },
     bullets: snap.bullets.map(b => ({
       id: b.id,
@@ -55,6 +57,7 @@ export function applySnapshot(snap: SnapshotData): GameState {
       vx: b.vx,
       vy: b.vy,
       life: 1,
+      damage: b.damage ?? 0,
       enemy: b.enemy,
     })),
     enemies: snap.enemies.map(e => ({

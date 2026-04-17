@@ -26,6 +26,7 @@ export type Ship = {
   overheated: boolean;    // true = forced cooldown, can't fire
   turretAngle: number;
   gunnerFireCooldown: number;
+  upgradeActive: boolean;       // NEW
 };
 
 export type Bullet = {
@@ -35,7 +36,11 @@ export type Bullet = {
   vx: number;
   vy: number;
   life: number;
-  enemy?: boolean;       // true for boss projectiles
+  damage: number;               // NEW — per-bullet damage
+  enemy?: boolean;              // true for boss projectiles
+  piercing?: boolean;           // NEW — set on upgraded gunner shots
+  pierceHits?: number;          // NEW — counts enemies pierced
+  radiusBonus?: number;         // NEW — extra collision radius for Mega-Gun
 };
 
 export type Enemy = {
@@ -54,7 +59,7 @@ export type Enemy = {
 
 export type Pickup = {
   id: number;
-  kind: "heart";
+  kind: "heart" | "bonus";      // CHANGED — widened
   x: number;
   y: number;
   baseX: number;
@@ -84,6 +89,7 @@ export function createInitialState(): GameState {
       overheated: false,
       turretAngle: 0,
       gunnerFireCooldown: 0,
+      upgradeActive: false,
     },
     bullets: [],
     enemies: [],
@@ -145,6 +151,7 @@ export function updateGameState(
       vx: 0,
       vy: -BULLET.pilotSpeed,
       life: BULLET.maxLifetime,
+      damage: BULLET.pilotDamage,
     });
     ship.fireCooldown = SHIP.fireCooldown;
     ship.heat += SHIP.heatPerShot;
@@ -167,6 +174,7 @@ export function updateGameState(
         vx,
         vy,
         life: BULLET.maxLifetime,
+        damage: BULLET.gunnerDamage,
       });
       ship.gunnerFireCooldown = SHIP.gunnerFireCooldown;
     }
@@ -212,6 +220,7 @@ export function updateGameState(
             vx: (dx / dist) * ENEMY_BOSS.bulletSpeed,
             vy: (dy / dist) * ENEMY_BOSS.bulletSpeed,
             life: 3.0,
+            damage: 0,                    // enemy bullets damage ship via ENEMY_BOSS.contactDamage
             enemy: true,
           });
         }
@@ -239,6 +248,7 @@ export function updateGameState(
             vx: Math.sin(a) * ENEMY_BOSS_STRAFER.bulletSpeed,
             vy: Math.cos(a) * ENEMY_BOSS_STRAFER.bulletSpeed,
             life: 3.0,
+            damage: 0,
             enemy: true,
           });
         }
@@ -294,8 +304,8 @@ export function updateGameState(
     const er = enemyRadius(e.type);
     for (const b of state.bullets) {
       if (b.enemy) continue;
-      if (circlesOverlap(b.x, b.y, BULLET.radius, e.x, e.y, er)) {
-        const dmg = b.vx === 0 ? BULLET.pilotDamage : BULLET.gunnerDamage;
+      if (circlesOverlap(b.x, b.y, BULLET.radius + (b.radiusBonus ?? 0), e.x, e.y, er)) {
+        const dmg = b.damage;
         e.hp -= dmg;
         b.life = 0;
         if (e.hp <= 0) {

@@ -121,6 +121,20 @@ export const HEART = {
   spawnIntervalMax: 14,
 } as const;
 
+// Bonus pickup — timed weapon upgrade
+export const BONUS = {
+  width: 30, height: 30, radius: 18,
+  fallSpeed: 50,
+  swayAmplitude: 20,
+  swayFrequency: 2.0,
+  dropThreshold: 0.5,         // fraction of wave kills before guaranteed drop
+  randomDropChance: 0.03,     // per-kill chance for early drop
+  bossDropHpFraction: 0.5,    // boss wave drops a bonus at ≤50% HP
+  pilotDamageMultiplier: 2,   // Mega-Gun damage multiplier
+  pilotRadiusBonus: 4,        // Mega-Gun hitbox radius bonus (px)
+  pierceMax: 3,               // Beam-Laser: max enemies per shot
+} as const;
+
 export function isBossType(type: number): boolean {
   return type === 2 || type === 3 || type === 4 || type === 5;
 }

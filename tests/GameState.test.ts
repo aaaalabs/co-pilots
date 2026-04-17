@@ -156,7 +156,7 @@ describe("GameState", () => {
       const s = createInitialState();
       s.ship.fireCooldown = 999; // prevent auto-fire from interfering
       s.enemies.push({ id: 1, type: 0, x: 100, y: 100, hp: 25 });
-      s.bullets.push({ id: 1, x: 100, y: 100, vx: 0, vy: -BULLET.pilotSpeed, life: 1 });
+      s.bullets.push({ id: 1, x: 100, y: 100, vx: 0, vy: -BULLET.pilotSpeed, life: 1, damage: BULLET.pilotDamage });
       s.nextEnemyId = 2;
       s.nextBulletId = 2;
       const next = updateGameState(s, 0.016, NO_INPUT);
