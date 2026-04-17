@@ -178,6 +178,7 @@ export function updateGameState(
         vy,
         life: BULLET.maxLifetime,
         damage: BULLET.gunnerDamage,
+        ...(ship.upgradeActive ? { piercing: true, pierceHits: 0 } : {}),
       });
       ship.gunnerFireCooldown = SHIP.gunnerFireCooldown;
     }
@@ -307,13 +308,18 @@ export function updateGameState(
     const er = enemyRadius(e.type);
     for (const b of state.bullets) {
       if (b.enemy) continue;
+      if (e.hp <= 0) continue;
+      if (b.life <= 0) continue;
       if (circlesOverlap(b.x, b.y, BULLET.radius + (b.radiusBonus ?? 0), e.x, e.y, er)) {
-        const dmg = b.damage;
-        e.hp -= dmg;
-        b.life = 0;
+        e.hp -= b.damage;
+        if (b.piercing) {
+          b.pierceHits = (b.pierceHits ?? 0) + 1;
+          if (b.pierceHits >= BONUS.pierceMax) b.life = 0;
+        } else {
+          b.life = 0;
+        }
         if (e.hp <= 0) {
           state.score += enemyScore(e.type);
-          break;
         }
       }
     }

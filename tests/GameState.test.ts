@@ -235,6 +235,38 @@ describe("GameState", () => {
       s = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true }, gunnerInput(Math.PI, true));
       expect(s.bullets).toHaveLength(2); // one pilot bullet, one gunner bullet
     });
+
+    it("spawns a piercing Beam-Laser bullet when upgrade is active", () => {
+      const s = createInitialState();
+      s.ship.upgradeActive = true;
+      s.ship.fireCooldown = 999; // suppress pilot auto-fire
+      const next = updateGameState(s, 0.016, NO_INPUT, gunnerInput(0, true));
+      expect(next.bullets).toHaveLength(1);
+      expect(next.bullets[0].piercing).toBe(true);
+      expect(next.bullets[0].pierceHits).toBe(0);
+    });
+
+    it("piercing bullet kills up to pierceMax enemies in a line", () => {
+      const s = createInitialState();
+      s.ship.fireCooldown = 999;
+      // 4 low-HP enemies stacked vertically at x=100
+      for (let i = 0; i < 4; i++) {
+        s.enemies.push({ id: i + 1, type: 0, x: 100, y: 100 + i * 2, hp: 1 });
+      }
+      s.nextEnemyId = 5;
+      // Piercing bullet moving upward through them (vy negative)
+      s.bullets.push({
+        id: 1, x: 100, y: 110,
+        vx: 0, vy: -10,
+        life: 1,
+        damage: BULLET.gunnerDamage,
+        piercing: true,
+        pierceHits: 0,
+      });
+      const next = updateGameState(s, 0.016, NO_INPUT);
+      // 3 killed (pierceMax), 1 survivor
+      expect(next.enemies).toHaveLength(1);
+    });
   });
 
   describe("updateGameState — bonus pickup", () => {
