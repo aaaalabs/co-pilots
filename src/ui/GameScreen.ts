@@ -60,6 +60,7 @@ export class GameScreen {
   private frameDt = 0;
   private prevEnemyPositions = new Map<number, { x: number; y: number; type: number }>();
   private prevPickupY = new Map<number, number>();
+  private prevPickupKind = new Map<number, "heart" | "bonus">();
   private sound = new SoundEngine();
   private music = new MusicEngine();
   private prevBulletCount = 0;
@@ -270,16 +271,20 @@ export class GameScreen {
       this.prevEnemyPositions.set(e.id, { x: e.x, y: e.y, type: e.type });
     }
 
-    // Detect collected pickups (removed while still on-screen) → heal sound
+    // Detect collected pickups → correct sample per kind
     const currentPickupIds = new Set(this.state.pickups.map(p => p.id));
-    for (const [id, lastY] of this.prevPickupY) {
-      if (!currentPickupIds.has(id) && lastY < PLAYFIELD.height) {
-        this.sound.play("coolReady");
+    for (const [id, prevKind] of this.prevPickupKind) {
+      const lastY = this.prevPickupY.get(id);
+      if (!currentPickupIds.has(id) && lastY !== undefined && lastY < PLAYFIELD.height) {
+        if (prevKind === "bonus") this.sound.playBonusCollect();
+        else this.sound.playHeartCollect();
       }
     }
+    this.prevPickupKind.clear();
     this.prevPickupY.clear();
     for (const p of this.state.pickups) {
       this.prevPickupY.set(p.id, p.y);
+      this.prevPickupKind.set(p.id, p.kind);
     }
 
     // Detect new bullets → shooting sounds
@@ -289,9 +294,11 @@ export class GameScreen {
       if (newest.enemy) {
         this.sound.play("bossShoot");
       } else if (newest.vx === 0) {
-        this.sound.play("pilotShoot");
+        // Pilot shot; Mega-Gun when upgrade active
+        this.sound.playPilotShot(this.state.ship.upgradeActive);
       } else {
-        this.sound.play("gunnerShoot");
+        // Gunner shot; Beam-Laser when piercing flag present
+        this.sound.playGunnerShot(!!newest.piercing);
       }
     }
     this.prevBulletCount = bulletCount;
@@ -299,8 +306,17 @@ export class GameScreen {
     // Detect wave change
     if (this.spawner.wave > this.prevWave) {
       this.sound.play("waveStart");
-      // Speed up music slightly each wave
       this.music.setBpm(100 + (this.spawner.wave - 1) * 5);
+      const prevWasBoss = this.prevWave % WAVE.bossEveryN === 0;
+      const nowIsBoss = this.spawner.wave % WAVE.bossEveryN === 0;
+      if (!prevWasBoss) {
+        this.sound.playWaveClear();
+      }
+      if (nowIsBoss) {
+        this.music.switchToBossTheme();
+      } else if (prevWasBoss) {
+        this.music.switchToNormalTheme();
+      }
       this.prevWave = this.spawner.wave;
     }
 
