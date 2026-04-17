@@ -59,4 +59,32 @@ describe("Snapshot", () => {
     expect(restored.bullets).toHaveLength(1);
     expect(restored.enemies).toHaveLength(1);
   });
+
+  it("round-trips ship.upgradeActive", () => {
+    const state = createInitialState();
+    state.ship.upgradeActive = true;
+    const snap = serializeSnapshot(state, 1);
+    expect(snap.ship.upgradeActive).toBe(true);
+    const restored = applySnapshot(snap);
+    expect(restored.ship.upgradeActive).toBe(true);
+  });
+
+  it("round-trips bonus pickups", () => {
+    const state = createInitialState();
+    state.pickups.push({ id: 1, kind: "bonus", x: 100, y: 50, baseX: 100, age: 0 });
+    const snap = serializeSnapshot(state, 1);
+    expect(snap.pickups[0].kind).toBe("bonus");
+    const restored = applySnapshot(snap);
+    expect(restored.pickups[0].kind).toBe("bonus");
+  });
+
+  it("round-trips piercing bullets", () => {
+    const state = createInitialState();
+    state.bullets.push({
+      id: 1, x: 10, y: 20, vx: 0, vy: -540, life: 1,
+      damage: BULLET.gunnerDamage, piercing: true, pierceHits: 0,
+    });
+    const snap = serializeSnapshot(state, 1);
+    expect(snap.bullets[0].piercing).toBe(true);
+  });
 });

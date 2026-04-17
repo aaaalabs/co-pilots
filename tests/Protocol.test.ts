@@ -45,7 +45,7 @@ describe("Protocol", () => {
       type: "snapshot",
       tick: 42,
       state: {
-        ship: { x: 100, y: 200, hp: 80, turretAngle: 1.5 },
+        ship: { x: 100, y: 200, hp: 80, turretAngle: 1.5, upgradeActive: false },
         bullets: [{ id: 1, x: 10, y: 20, vx: 0, vy: -540 }],
         enemies: [{ id: 1, type: 0, x: 50, y: 30, hp: 25 }],
         pickups: [],

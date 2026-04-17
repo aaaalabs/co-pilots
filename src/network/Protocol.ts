@@ -4,8 +4,8 @@ export type Role = "pilot" | "gunner";
 export type Difficulty = "easy" | "normal" | "hard";
 
 export type SnapshotData = {
-  ship: { x: number; y: number; hp: number; turretAngle: number };
-  bullets: Array<{ id: number; x: number; y: number; vx: number; vy: number; damage?: number; enemy?: boolean }>;
+  ship: { x: number; y: number; hp: number; turretAngle: number; upgradeActive: boolean };
+  bullets: Array<{ id: number; x: number; y: number; vx: number; vy: number; damage?: number; enemy?: boolean; piercing?: boolean }>;
   enemies: Array<{ id: number; type: number; x: number; y: number; hp: number }>;
   pickups: Array<{ id: number; kind: "heart" | "bonus"; x: number; y: number }>;
   score: number;

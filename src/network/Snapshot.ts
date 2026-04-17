@@ -8,6 +8,7 @@ export function serializeSnapshot(state: GameState, wave: number): SnapshotData 
       y: state.ship.y,
       hp: state.ship.hp,
       turretAngle: state.ship.turretAngle,
+      upgradeActive: state.ship.upgradeActive,
     },
     bullets: state.bullets.map(b => ({
       id: b.id,
@@ -17,6 +18,7 @@ export function serializeSnapshot(state: GameState, wave: number): SnapshotData 
       vy: b.vy,
       damage: b.damage,
       ...(b.enemy ? { enemy: true } : {}),
+      ...(b.piercing ? { piercing: true } : {}),
     })),
     enemies: state.enemies.map(e => ({
       id: e.id,
@@ -48,7 +50,7 @@ export function applySnapshot(snap: SnapshotData): GameState {
       heat: 0,
       overheated: false,
       gunnerFireCooldown: 0,
-      upgradeActive: false,
+      upgradeActive: snap.ship.upgradeActive,
     },
     bullets: snap.bullets.map(b => ({
       id: b.id,
@@ -59,6 +61,7 @@ export function applySnapshot(snap: SnapshotData): GameState {
       life: 1,
       damage: b.damage ?? 0,
       enemy: b.enemy,
+      piercing: b.piercing,
     })),
     enemies: snap.enemies.map(e => ({
       id: e.id,
