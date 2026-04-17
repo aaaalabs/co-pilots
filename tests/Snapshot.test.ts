@@ -86,5 +86,7 @@ describe("Snapshot", () => {
     });
     const snap = serializeSnapshot(state, 1);
     expect(snap.bullets[0].piercing).toBe(true);
+    const restored = applySnapshot(snap);
+    expect(restored.bullets[0].piercing).toBe(true);
   });
 });

@@ -59,6 +59,7 @@ export function applySnapshot(snap: SnapshotData): GameState {
       vx: b.vx,
       vy: b.vy,
       life: 1,
+      // client-only; host is authoritative for collision
       damage: b.damage ?? 0,
       enemy: b.enemy,
       piercing: b.piercing,
