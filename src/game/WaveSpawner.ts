@@ -2,7 +2,7 @@ import { GameState } from "./GameState";
 import {
   WAVE, ENEMY_DRONE, ENEMY_HUNTER,
   ENEMY_BOSS, ENEMY_BOSS_STRAFER, ENEMY_BOSS_SPLITTER, ENEMY_BOSS_CHARGER,
-  HEART, PLAYFIELD, isBossType,
+  HEART, BONUS, PLAYFIELD, isBossType,
 } from "./constants";
 
 export type WaveSpawner = {
@@ -11,6 +11,9 @@ export type WaveSpawner = {
   spawned: number;
   bossActive: boolean;
   heartTimer: number;
+  bonusDroppedInWave: boolean;
+  killsThisWave: number;
+  prevEnemyIds: Set<number>;
 };
 
 export function createWaveSpawner(): WaveSpawner {
@@ -20,6 +23,9 @@ export function createWaveSpawner(): WaveSpawner {
     spawned: 0,
     bossActive: false,
     heartTimer: HEART.spawnIntervalMin,
+    bonusDroppedInWave: false,
+    killsThisWave: 0,
+    prevEnemyIds: new Set<number>(),
   };
 }
 
@@ -40,6 +46,41 @@ export function tickWaveSpawner(
   state: GameState,
   dt: number,
 ): void {
+  // Count kills this wave by diffing enemy ids since last tick.
+  const currentIds = new Set(state.enemies.map(e => e.id));
+  for (const prevId of spawner.prevEnemyIds) {
+    if (!currentIds.has(prevId)) {
+      spawner.killsThisWave++;
+      // Per-kill random drop chance
+      if (
+        !spawner.bonusDroppedInWave &&
+        !state.ship.upgradeActive &&
+        Math.random() < BONUS.randomDropChance
+      ) {
+        spawnBonus(spawner, state);
+      }
+    }
+  }
+  spawner.prevEnemyIds = currentIds;
+
+  // Guaranteed drop at 50% of wave kills
+  const threshold = Math.ceil(WAVE.enemiesPerWave * BONUS.dropThreshold);
+  if (
+    !spawner.bonusDroppedInWave &&
+    !state.ship.upgradeActive &&
+    spawner.killsThisWave >= threshold
+  ) {
+    spawnBonus(spawner, state);
+  }
+
+  // Boss-wave drop: when the boss crosses 50% HP
+  if (isBossWave(spawner.wave) && !spawner.bonusDroppedInWave) {
+    const boss = state.enemies.find(e => isBossType(e.type));
+    if (boss && boss.hp <= bossMaxHp(boss.type) * BONUS.bossDropHpFraction) {
+      spawnBonus(spawner, state);
+    }
+  }
+
   // Heart pickup spawning when ship is low on HP
   if (state.ship.hp < HEART.spawnHpThreshold) {
     spawner.heartTimer -= dt;
@@ -60,10 +101,8 @@ export function tickWaveSpawner(
     }
   }
 
-  const isBossWave = spawner.wave % WAVE.bossEveryN === 0;
-
   // Boss wave: spawn boss once, wait for it to die
-  if (isBossWave) {
+  if (isBossWave(spawner.wave)) {
     if (!spawner.bossActive && spawner.spawned === 0) {
       const boss = bossForWave(spawner.wave);
       state.enemies.push({
@@ -81,6 +120,9 @@ export function tickWaveSpawner(
       spawner.bossActive = false;
       spawner.wave++;
       spawner.spawned = 0;
+      spawner.bonusDroppedInWave = false;
+      spawner.killsThisWave = 0;
+      state.ship.upgradeActive = false;
     }
     return;
   }
@@ -90,6 +132,9 @@ export function tickWaveSpawner(
     if (state.enemies.length === 0) {
       spawner.wave++;
       spawner.spawned = 0;
+      spawner.bonusDroppedInWave = false;
+      spawner.killsThisWave = 0;
+      state.ship.upgradeActive = false;
     }
     return;
   }
@@ -99,6 +144,34 @@ export function tickWaveSpawner(
     spawnEnemy(spawner, state);
     spawner.spawnTimer += Math.max(0.4, WAVE.spawnInterval - spawner.wave * 0.08);
   }
+}
+
+function isBossWave(wave: number): boolean {
+  return wave % WAVE.bossEveryN === 0;
+}
+
+function bossMaxHp(type: number): number {
+  switch (type) {
+    case 2: return ENEMY_BOSS.maxHp;
+    case 3: return ENEMY_BOSS_STRAFER.maxHp;
+    case 4: return ENEMY_BOSS_SPLITTER.maxHp;
+    case 5: return ENEMY_BOSS_CHARGER.maxHp;
+    default: return 1;
+  }
+}
+
+function spawnBonus(spawner: WaveSpawner, state: GameState): void {
+  const margin = BONUS.swayAmplitude + 20;
+  const baseX = margin + Math.random() * (PLAYFIELD.width - margin * 2);
+  state.pickups.push({
+    id: state.nextPickupId++,
+    kind: "bonus",
+    x: baseX,
+    y: -BONUS.height,
+    baseX,
+    age: 0,
+  });
+  spawner.bonusDroppedInWave = true;
 }
 
 function spawnEnemy(spawner: WaveSpawner, state: GameState): void {

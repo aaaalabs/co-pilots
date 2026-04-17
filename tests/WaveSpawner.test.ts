@@ -73,4 +73,36 @@ describe("WaveSpawner", () => {
     tickWaveSpawner(spawner, state, 0.016);
     expect(spawner.wave).toBe(2);
   });
+
+  it("drops a bonus pickup after 50% of wave kills", () => {
+    const spawner = createWaveSpawner();
+    const state = createInitialState();
+    spawner.killsThisWave = Math.ceil(WAVE.enemiesPerWave * 0.5);
+    tickWaveSpawner(spawner, state, 0.016);
+    const bonus = state.pickups.find(p => p.kind === "bonus");
+    expect(bonus).toBeDefined();
+  });
+
+  it("does not drop a second bonus in the same wave", () => {
+    const spawner = createWaveSpawner();
+    const state = createInitialState();
+    spawner.killsThisWave = WAVE.enemiesPerWave;
+    spawner.bonusDroppedInWave = true;
+    tickWaveSpawner(spawner, state, 0.016);
+    const bonuses = state.pickups.filter(p => p.kind === "bonus");
+    expect(bonuses).toHaveLength(0);
+  });
+
+  it("clears ship.upgradeActive when wave advances", () => {
+    const spawner = createWaveSpawner();
+    const state = createInitialState();
+    state.ship.upgradeActive = true;
+    for (let i = 0; i < WAVE.enemiesPerWave + 2; i++) {
+      tickWaveSpawner(spawner, state, WAVE.spawnInterval + 0.01);
+    }
+    state.enemies = [];
+    tickWaveSpawner(spawner, state, 0.016);
+    expect(spawner.wave).toBe(2);
+    expect(state.ship.upgradeActive).toBe(false);
+  });
 });
