@@ -280,14 +280,26 @@ export class Renderer {
   }
 
   private drawShip(state: GameState): void {
-    const { x, y, turretAngle } = state.ship;
-    this.drawSpriteGlow("ship", x - SS / 2, y - SS / 2, COLORS.cyan);
+    const { x, y, turretAngle, upgradeActive } = state.ship;
+    if (upgradeActive) {
+      const ctx = this.ctx;
+      const pulse = 0.6 + 0.4 * Math.sin(this.time * 6);
+      const r = SS * 0.9 + pulse * 4;
+      const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+      grad.addColorStop(0, `rgba(255, 255, 0, ${0.35 + pulse * 0.15})`);
+      grad.addColorStop(0.6, `rgba(255, 200, 0, ${0.12})`);
+      grad.addColorStop(1, "transparent");
+      ctx.fillStyle = grad;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+
+    this.drawSpriteGlow("ship", x - SS / 2, y - SS / 2, upgradeActive ? COLORS.yellow : COLORS.cyan);
 
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(x, y - SS / 2);
     ctx.rotate(turretAngle);
-    this.drawSpriteGlow("turret", -SS / 2, -SS, COLORS.magenta);
+    this.drawSpriteGlow("turret", -SS / 2, -SS, upgradeActive ? COLORS.yellow : COLORS.magenta);
     ctx.restore();
   }
 
@@ -307,10 +319,13 @@ export class Renderer {
 
   private drawPickups(state: GameState): void {
     for (const p of state.pickups) {
-      // Pulse the heart slightly so it stands out
       const pulse = 1 + Math.sin(p.age * 6) * 0.08;
       const size = SS * pulse;
-      this.drawSpriteGlow("heart", p.x - size / 2, p.y - size / 2, COLORS.magenta);
+      if (p.kind === "bonus") {
+        this.drawSpriteGlow("powerup", p.x - size / 2, p.y - size / 2, COLORS.yellow);
+      } else {
+        this.drawSpriteGlow("heart", p.x - size / 2, p.y - size / 2, COLORS.magenta);
+      }
     }
   }
 
