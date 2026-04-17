@@ -200,11 +200,6 @@ export class SoundEngine {
     }
   }
 
-  getBank(): AudioSampleBank | null {
-    this.getCtx();
-    return this.bank;
-  }
-
   playPilotShot(upgraded: boolean): void {
     if (this._muted) return;
     this.getCtx();
