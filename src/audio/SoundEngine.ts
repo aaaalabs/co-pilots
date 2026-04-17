@@ -1,4 +1,6 @@
 // Synthesized SFX engine for co-pilots — adapted from dropster/snakey
+import { AudioSampleBank } from "./AudioSampleBank";
+
 const MUTE_KEY = "co-pilots-muted";
 
 type SoundName = "pilotShoot" | "gunnerShoot" | "enemyHit" | "enemyKill" | "shipHit" | "bossShoot" | "bossKill" | "overheat" | "coolReady" | "waveStart";
@@ -9,6 +11,7 @@ export class SoundEngine {
   private delayNode: DelayNode | null = null;
   private feedbackNode: GainNode | null = null;
   private compNode: DynamicsCompressorNode | null = null;
+  private bank: AudioSampleBank | null = null;
 
   constructor() {
     this._muted = localStorage.getItem(MUTE_KEY) === "true";
@@ -34,6 +37,16 @@ export class SoundEngine {
       this.delayNode.connect(this.feedbackNode);
       this.feedbackNode.connect(this.delayNode);
       this.delayNode.connect(this.compNode);
+      this.bank = new AudioSampleBank(this.ctx, this.compNode);
+      void this.bank.preload([
+        "laser_shoot_tiny",
+        "shot-ship",
+        "shot-ship_mega-gun",
+        "laser_shoot_long",
+        "heart_collect",
+        "bonus_collect",
+        "level_win",
+      ]);
     }
     return this.ctx;
   }
@@ -187,6 +200,60 @@ export class SoundEngine {
     }
   }
 
+  getBank(): AudioSampleBank | null {
+    this.getCtx();
+    return this.bank;
+  }
+
+  playPilotShot(upgraded: boolean): void {
+    if (this._muted) return;
+    this.getCtx();
+    const name = upgraded ? "shot-ship_mega-gun" : "laser_shoot_tiny";
+    if (this.bank?.play(name, { gain: 0.7 })) return;
+    // Synth fallback
+    this.layeredOsc("square", upgraded ? 600 : 880, 0.12, upgraded ? 0.10 : 0.06, {
+      freqEnd: upgraded ? 300 : 440, layers: 1, filterFreq: 2500,
+    });
+  }
+
+  playGunnerShot(upgraded: boolean): void {
+    if (this._muted) return;
+    this.getCtx();
+    const name = upgraded ? "laser_shoot_long" : "shot-ship";
+    if (this.bank?.play(name, { gain: 0.7 })) return;
+    // Synth fallback
+    this.layeredOsc("sawtooth", 330, 0.15, upgraded ? 0.2 : 0.1, {
+      freqEnd: 220, layers: 2, detune: 10, filterFreq: 1800, reverb: true,
+    });
+  }
+
+  playHeartCollect(): void {
+    if (this._muted) return;
+    this.getCtx();
+    if (this.bank?.play("heart_collect", { gain: 0.8 })) return;
+    this.layeredOsc("sine", 660, 0.2, 0.2, { freqEnd: 1320, filterFreq: 4000 });
+  }
+
+  playBonusCollect(): void {
+    if (this._muted) return;
+    this.getCtx();
+    if (this.bank?.play("bonus_collect", { gain: 0.9 })) return;
+    // Synth fallback: triumphant arpeggio
+    [660, 880, 1320].forEach((f, i) => {
+      setTimeout(() => {
+        if (this._muted) return;
+        this.layeredOsc("sine", f, 0.2, 0.15, { filterFreq: 4500 });
+      }, i * 80);
+    });
+  }
+
+  playWaveClear(): void {
+    if (this._muted) return;
+    this.getCtx();
+    if (this.bank?.play("level_win", { gain: 0.8 })) return;
+    this.layeredOsc("square", 880, 0.2, 0.15, { freqEnd: 1760, filterFreq: 3000 });
+  }
+
   gameOver(): void {
     if (this._muted) return;
     const ctx = this.getCtx();
@@ -223,6 +290,7 @@ export class SoundEngine {
       this.delayNode = null;
       this.feedbackNode = null;
       this.compNode = null;
+      this.bank = null;
     }
   }
 }
