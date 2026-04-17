@@ -1,6 +1,8 @@
 // Adaptive synthesized music engine for co-pilots — adapted from dropster/snakey
 // Minor-key space theme with tension escalation based on wave progress
 
+import { AudioSampleBank } from "./AudioSampleBank";
+
 interface Chord { root: number; third: number; fifth: number }
 
 // Em – C – Am – B (darker, more dramatic than the Am-F-C-G of dropster)
@@ -29,6 +31,10 @@ export class MusicEngine {
   private totalSteps = 0;
   private padOscs: OscillatorNode[] = [];
   private padGain: GainNode | null = null;
+  private bank: AudioSampleBank | null = null;
+  private bossSource: AudioBufferSourceNode | null = null;
+  private bossGain: GainNode | null = null;
+  private onBossTheme = false;
 
   get muted(): boolean { return this._muted; }
   set muted(val: boolean) {
@@ -47,6 +53,8 @@ export class MusicEngine {
       this.noiseBuffer = this.ctx.createBuffer(1, len, sr);
       const d = this.noiseBuffer.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      this.bank = new AudioSampleBank(this.ctx, this.masterGain);
+      void this.bank.preload(["boss-fight-theme"]);
     }
     this.scheduleInterval();
   }
@@ -56,10 +64,53 @@ export class MusicEngine {
     for (const o of this.padOscs) { try { o.stop(); } catch { /* noop */ } }
     this.padOscs = [];
     this.padGain = null;
-    if (this.ctx) { void this.ctx.close(); this.ctx = null; this.masterGain = null; this.noiseBuffer = null; }
+    if (this.bossSource) { try { this.bossSource.stop(); } catch { /* noop */ } this.bossSource = null; }
+    this.bossGain = null;
+    if (this.ctx) { void this.ctx.close(); this.ctx = null; this.masterGain = null; this.noiseBuffer = null; this.bank = null; }
     this.step = 0;
     this.totalSteps = 0;
     this.patternB = false;
+    this.onBossTheme = false;
+  }
+
+  switchToBossTheme(): void {
+    if (!this.ctx || !this.masterGain || !this.bank || this.onBossTheme) return;
+    this.onBossTheme = true;
+    const t = this.ctx.currentTime;
+    if (this.intervalId !== null) { clearInterval(this.intervalId); this.intervalId = null; }
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(this._muted ? 0 : 0.22, t + 0.5);
+    g.connect(this.ctx.destination);
+    const src = this.bank.play("boss-fight-theme", { loop: true, gain: 1.0 });
+    if (src) {
+      try { src.disconnect(); } catch { /* noop */ }
+      src.connect(g);
+    }
+    this.bossSource = src;
+    this.bossGain = g;
+    this.masterGain.gain.cancelScheduledValues(t);
+    this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, t);
+    this.masterGain.gain.linearRampToValueAtTime(0, t + 0.5);
+  }
+
+  switchToNormalTheme(): void {
+    if (!this.ctx || !this.masterGain || !this.onBossTheme) return;
+    this.onBossTheme = false;
+    const t = this.ctx.currentTime;
+    if (this.bossGain) {
+      this.bossGain.gain.cancelScheduledValues(t);
+      this.bossGain.gain.setValueAtTime(this.bossGain.gain.value, t);
+      this.bossGain.gain.linearRampToValueAtTime(0, t + 0.5);
+    }
+    const bossSrc = this.bossSource;
+    setTimeout(() => { try { bossSrc?.stop(); } catch { /* noop */ } }, 520);
+    this.bossSource = null;
+    this.bossGain = null;
+    this.masterGain.gain.cancelScheduledValues(t);
+    this.masterGain.gain.setValueAtTime(0, t);
+    this.masterGain.gain.linearRampToValueAtTime(this._muted ? 0 : 0.10, t + 0.5);
+    if (this.intervalId === null) this.scheduleInterval();
   }
 
   setBpm(bpm: number): void { this.bpm = bpm; this.restartInterval(); }
