@@ -2,7 +2,7 @@ import {
   SHIP, BULLET, PLAYFIELD,
   ENEMY_DRONE, ENEMY_HUNTER, ENEMY_BOSS,
   ENEMY_BOSS_STRAFER, ENEMY_BOSS_SPLITTER, ENEMY_BOSS_CHARGER,
-  HEART, isBossType,
+  HEART, BONUS, isBossType,
 } from "./constants";
 import { circlesOverlap } from "./Collision";
 
@@ -151,7 +151,10 @@ export function updateGameState(
       vx: 0,
       vy: -BULLET.pilotSpeed,
       life: BULLET.maxLifetime,
-      damage: BULLET.pilotDamage,
+      damage: ship.upgradeActive
+        ? BULLET.pilotDamage * BONUS.pilotDamageMultiplier
+        : BULLET.pilotDamage,
+      ...(ship.upgradeActive ? { radiusBonus: BONUS.pilotRadiusBonus } : {}),
     });
     ship.fireCooldown = SHIP.fireCooldown;
     ship.heat += SHIP.heatPerShot;
@@ -357,15 +360,24 @@ export function updateGameState(
   // Pickup movement (leaf-like sway) and collection
   for (const p of state.pickups) {
     p.age += dt;
-    p.y += HEART.fallSpeed * dt;
-    p.x = p.baseX + Math.sin(p.age * HEART.swayFrequency) * HEART.swayAmplitude;
+    const fall = p.kind === "bonus" ? BONUS.fallSpeed : HEART.fallSpeed;
+    const swayFreq = p.kind === "bonus" ? BONUS.swayFrequency : HEART.swayFrequency;
+    const swayAmp = p.kind === "bonus" ? BONUS.swayAmplitude : HEART.swayAmplitude;
+    p.y += fall * dt;
+    p.x = p.baseX + Math.sin(p.age * swayFreq) * swayAmp;
   }
   state.pickups = state.pickups.filter(p => {
-    if (circlesOverlap(p.x, p.y, HEART.radius, ship.x, ship.y, SHIP.radius)) {
-      ship.hp = Math.min(SHIP.maxHp, ship.hp + HEART.healAmount);
+    const r = p.kind === "bonus" ? BONUS.radius : HEART.radius;
+    if (circlesOverlap(p.x, p.y, r, ship.x, ship.y, SHIP.radius)) {
+      if (p.kind === "heart") {
+        ship.hp = Math.min(SHIP.maxHp, ship.hp + HEART.healAmount);
+      } else {
+        ship.upgradeActive = true;
+      }
       return false;
     }
-    return p.y < PLAYFIELD.height + HEART.height;
+    const maxHeight = p.kind === "bonus" ? BONUS.height : HEART.height;
+    return p.y < PLAYFIELD.height + maxHeight;
   });
 
   if (state.ship.hp <= 0) {

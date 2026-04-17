@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createInitialState, updateGameState, PilotInput, GunnerInput } from "../src/game/GameState";
-import { SHIP, PLAYFIELD, BULLET, ENEMY_DRONE } from "../src/game/constants";
+import { SHIP, PLAYFIELD, BULLET, ENEMY_DRONE, BONUS } from "../src/game/constants";
 
 const NO_INPUT: PilotInput = { moveX: 0, moveY: 0, fire: false };
 
@@ -131,6 +131,15 @@ describe("GameState", () => {
       s = updateGameState(s, 0.5, NO_INPUT);
       expect(s.bullets[0].y).toBeCloseTo(startY - BULLET.pilotSpeed * 0.5, 1);
     });
+
+    it("spawns a Mega-Gun bullet when upgrade is active", () => {
+      const s = createInitialState();
+      s.ship.upgradeActive = true;
+      const next = updateGameState(s, 0.016, FIRE);
+      expect(next.bullets).toHaveLength(1);
+      expect(next.bullets[0].damage).toBe(BULLET.pilotDamage * BONUS.pilotDamageMultiplier);
+      expect(next.bullets[0].radiusBonus).toBe(BONUS.pilotRadiusBonus);
+    });
   });
 
   describe("updateGameState — enemies", () => {
@@ -225,6 +234,33 @@ describe("GameState", () => {
       let s = createInitialState();
       s = updateGameState(s, 0.016, { moveX: 0, moveY: 0, fire: true }, gunnerInput(Math.PI, true));
       expect(s.bullets).toHaveLength(2); // one pilot bullet, one gunner bullet
+    });
+  });
+
+  describe("updateGameState — bonus pickup", () => {
+    it("activates ship.upgradeActive when ship touches a bonus pickup", () => {
+      const s = createInitialState();
+      s.pickups.push({
+        id: 1, kind: "bonus",
+        x: s.ship.x, y: s.ship.y,
+        baseX: s.ship.x, age: 0,
+      });
+      s.nextPickupId = 2;
+      const next = updateGameState(s, 0.016, NO_INPUT);
+      expect(next.ship.upgradeActive).toBe(true);
+      expect(next.pickups).toHaveLength(0);
+    });
+
+    it("does not change hp when collecting a bonus (heart-only effect)", () => {
+      const s = createInitialState();
+      s.ship.hp = 5;
+      s.pickups.push({
+        id: 1, kind: "bonus",
+        x: s.ship.x, y: s.ship.y,
+        baseX: s.ship.x, age: 0,
+      });
+      const next = updateGameState(s, 0.016, NO_INPUT);
+      expect(next.ship.hp).toBe(5);
     });
   });
 });
