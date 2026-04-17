@@ -152,10 +152,10 @@ function isBossWave(wave: number): boolean {
 
 function bossMaxHp(type: number): number {
   switch (type) {
-    case 2: return ENEMY_BOSS.maxHp;
-    case 3: return ENEMY_BOSS_STRAFER.maxHp;
-    case 4: return ENEMY_BOSS_SPLITTER.maxHp;
-    case 5: return ENEMY_BOSS_CHARGER.maxHp;
+    case ENEMY_BOSS.type: return ENEMY_BOSS.maxHp;
+    case ENEMY_BOSS_STRAFER.type: return ENEMY_BOSS_STRAFER.maxHp;
+    case ENEMY_BOSS_SPLITTER.type: return ENEMY_BOSS_SPLITTER.maxHp;
+    case ENEMY_BOSS_CHARGER.type: return ENEMY_BOSS_CHARGER.maxHp;
     default: return 1;
   }
 }
