@@ -15,7 +15,7 @@ export const SHIP = {
   turretWidth: 8,        // visual magenta turret stub
   turretHeight: 12,
   speed: 220,            // pixels per second
-  maxHp: 100,
+  maxHp: 10,             // 10 hearts
   fireCooldown: 0.10,    // seconds between shots (fast burst)
   heatPerShot: 0.10,     // heat added per pilot shot (0–1 scale)
   heatDecay: 0.25,       // heat decay per second (passive cooling)
@@ -44,7 +44,7 @@ export const ENEMY_DRONE = {
   width: 22, height: 22, radius: 12,
   speed: 90,
   maxHp: 25,
-  contactDamage: 15,
+  contactDamage: 1,
   scoreValue: 10,
 } as const;
 
@@ -54,21 +54,76 @@ export const ENEMY_HUNTER = {
   width: 22, height: 22, radius: 12,
   speed: 70,
   maxHp: 40,
-  contactDamage: 20,
+  contactDamage: 2,
   scoreValue: 25,
 } as const;
 
-// Enemy type 2: Boss — large, tough, shoots back
+// Enemy type 2: Sniper Boss — parks, aims at the ship
 export const ENEMY_BOSS = {
   type: 2 as const,
   width: 48, height: 48, radius: 26,
   speed: 30,
   maxHp: 300,
-  contactDamage: 40,
+  contactDamage: 4,
   scoreValue: 200,
-  fireInterval: 1.2,     // seconds between boss shots
+  fireInterval: 1.2,
   bulletSpeed: 180,
 } as const;
+
+// Enemy type 3: Strafer Boss — side-to-side, downward 3-bullet spread
+export const ENEMY_BOSS_STRAFER = {
+  type: 3 as const,
+  width: 56, height: 36, radius: 26,
+  speed: 140,
+  parkY: 70,
+  maxHp: 280,
+  contactDamage: 3,
+  scoreValue: 220,
+  fireInterval: 1.4,
+  bulletSpeed: 220,
+  spreadAngle: 0.35,
+} as const;
+
+// Enemy type 4: Splitter Boss — drifts down, spawns 4 hunters on death
+export const ENEMY_BOSS_SPLITTER = {
+  type: 4 as const,
+  width: 50, height: 50, radius: 26,
+  speed: 35,
+  parkY: 90,
+  maxHp: 340,
+  contactDamage: 3,
+  scoreValue: 250,
+  splitCount: 4,
+} as const;
+
+// Enemy type 5: Charger Boss — slow approach + fast dive
+export const ENEMY_BOSS_CHARGER = {
+  type: 5 as const,
+  width: 44, height: 44, radius: 24,
+  speed: 32,
+  diveSpeed: 320,
+  maxHp: 280,
+  contactDamage: 5,
+  scoreValue: 240,
+  diveInterval: 3.2,
+  diveDuration: 0.9,
+} as const;
+
+// Heart pickup — drifts down like a leaf
+export const HEART = {
+  width: 20, height: 20, radius: 14,
+  fallSpeed: 50,         // pixels per second
+  swayAmplitude: 60,     // px around base x
+  swayFrequency: 1.6,    // radians per second
+  healAmount: 2,         // restore N hearts
+  spawnHpThreshold: 5,   // only spawn when ship hp < this
+  spawnIntervalMin: 8,   // seconds
+  spawnIntervalMax: 14,
+} as const;
+
+export function isBossType(type: number): boolean {
+  return type === 2 || type === 3 || type === 4 || type === 5;
+}
 
 export const WAVE = {
   spawnInterval: 1.4,    // base seconds between spawns

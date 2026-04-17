@@ -12,6 +12,10 @@ export class MouseControls {
     canvas.addEventListener("mousedown", this.handleMouseDown);
     window.addEventListener("mouseup", this.handleMouseUp);
     canvas.addEventListener("contextmenu", this.handleContextMenu);
+    canvas.addEventListener("touchstart", this.handleTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", this.handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", this.handleTouchEnd);
+    canvas.addEventListener("touchcancel", this.handleTouchEnd);
     this.updateScale();
   }
 
@@ -30,6 +34,10 @@ export class MouseControls {
     this.canvas.removeEventListener("mousedown", this.handleMouseDown);
     window.removeEventListener("mouseup", this.handleMouseUp);
     this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
+    this.canvas.removeEventListener("touchstart", this.handleTouchStart);
+    this.canvas.removeEventListener("touchmove", this.handleTouchMove);
+    this.canvas.removeEventListener("touchend", this.handleTouchEnd);
+    this.canvas.removeEventListener("touchcancel", this.handleTouchEnd);
   }
 
   private updateScale(): void {
@@ -55,5 +63,31 @@ export class MouseControls {
 
   private handleContextMenu = (e: Event): void => {
     e.preventDefault();
+  };
+
+  private setFromTouch(t: Touch): void {
+    const rect = this.canvas.getBoundingClientRect();
+    this.mouseX = (t.clientX - rect.left) * this.scaleX;
+    this.mouseY = (t.clientY - rect.top) * this.scaleY;
+  }
+
+  private handleTouchStart = (e: TouchEvent): void => {
+    e.preventDefault();
+    this.updateScale();
+    if (e.touches.length > 0) {
+      this.setFromTouch(e.touches[0]);
+      this.mouseDown = true;
+    }
+  };
+
+  private handleTouchMove = (e: TouchEvent): void => {
+    e.preventDefault();
+    if (e.touches.length > 0) {
+      this.setFromTouch(e.touches[0]);
+    }
+  };
+
+  private handleTouchEnd = (): void => {
+    this.mouseDown = false;
   };
 }

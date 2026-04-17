@@ -1,7 +1,7 @@
 import { GameState } from "../game/GameState";
 import { SnapshotData } from "./Protocol";
 
-export function serializeSnapshot(state: GameState): SnapshotData {
+export function serializeSnapshot(state: GameState, wave: number): SnapshotData {
   return {
     ship: {
       x: state.ship.x,
@@ -24,7 +24,14 @@ export function serializeSnapshot(state: GameState): SnapshotData {
       y: e.y,
       hp: e.hp,
     })),
+    pickups: state.pickups.map(p => ({
+      id: p.id,
+      kind: p.kind,
+      x: p.x,
+      y: p.y,
+    })),
     score: state.score,
+    wave,
     gameOver: state.gameOver,
   };
 }
@@ -57,9 +64,18 @@ export function applySnapshot(snap: SnapshotData): GameState {
       y: e.y,
       hp: e.hp,
     })),
+    pickups: snap.pickups.map(p => ({
+      id: p.id,
+      kind: p.kind,
+      x: p.x,
+      y: p.y,
+      baseX: p.x,
+      age: 0,
+    })),
     score: snap.score,
     gameOver: snap.gameOver,
     nextBulletId: 0,
     nextEnemyId: 0,
+    nextPickupId: 0,
   };
 }

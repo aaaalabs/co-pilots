@@ -10,7 +10,7 @@ describe("Protocol", () => {
   });
 
   it("round-trips a start message", () => {
-    const msg: Message = { type: "start", difficulty: "normal" };
+    const msg: Message = { type: "start", difficulty: "normal", hostRole: "pilot" };
     const encoded = encodeMessage(msg);
     const decoded = decodeMessage(encoded);
     expect(decoded).toEqual(msg);
@@ -48,7 +48,9 @@ describe("Protocol", () => {
         ship: { x: 100, y: 200, hp: 80, turretAngle: 1.5 },
         bullets: [{ id: 1, x: 10, y: 20, vx: 0, vy: -540 }],
         enemies: [{ id: 1, type: 0, x: 50, y: 30, hp: 25 }],
+        pickups: [],
         score: 120,
+        wave: 3,
         gameOver: false,
       },
     };

@@ -2,8 +2,8 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
-  url: process.env.KV_REST_API_URL!,
-  token: process.env.KV_REST_API_TOKEN!,
+  url: process.env.KV_REST_API_URL!.trim(),
+  token: process.env.KV_REST_API_TOKEN!.trim(),
 });
 
 const CHALLENGE_KEY = "copilots:challenges"; // hash: player → peerId

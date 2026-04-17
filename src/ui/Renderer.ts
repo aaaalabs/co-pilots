@@ -82,6 +82,7 @@ export class Renderer {
     this.drawTrails();
     this.drawBullets(state);
     this.drawParticles();
+    this.drawPickups(state);
     this.drawEnemies(state);
     this.drawEngineGlow(state);
     this.drawShip(state);
@@ -114,6 +115,44 @@ export class Renderer {
         color: Math.random() > 0.5 ? COLORS.cyan : COLORS.magenta,
         size: 1 + Math.random() * 2.5,
       });
+    }
+  }
+
+  spawnBossExplosionAt(x: number, y: number): void {
+    // Massive multi-burst: shockwave + many particles + screen shake
+    this.shakeAmount = 22;
+    const palette = [COLORS.magenta, COLORS.yellow, COLORS.cyan, "#ff8800", COLORS.white];
+    // Core blast
+    for (let i = 0; i < 80; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 60 + Math.random() * 240;
+      this.particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        maxLife: 0.7 + Math.random() * 0.9,
+        color: palette[Math.floor(Math.random() * palette.length)],
+        size: 1.5 + Math.random() * 4,
+      });
+    }
+    // Secondary blooms around the boss
+    for (let burst = 0; burst < 6; burst++) {
+      const ox = x + (Math.random() - 0.5) * 60;
+      const oy = y + (Math.random() - 0.5) * 60;
+      for (let i = 0; i < 18; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 40 + Math.random() * 140;
+        this.particles.push({
+          x: ox, y: oy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          maxLife: 0.4 + Math.random() * 0.6,
+          color: palette[Math.floor(Math.random() * palette.length)],
+          size: 1 + Math.random() * 3,
+        });
+      }
     }
   }
 
@@ -266,12 +305,26 @@ export class Renderer {
     }
   }
 
+  private drawPickups(state: GameState): void {
+    for (const p of state.pickups) {
+      // Pulse the heart slightly so it stands out
+      const pulse = 1 + Math.sin(p.age * 6) * 0.08;
+      const size = SS * pulse;
+      this.drawSpriteGlow("heart", p.x - size / 2, p.y - size / 2, COLORS.magenta);
+    }
+  }
+
   private drawEnemies(state: GameState): void {
+    const bossSize = getSpriteSize(SPRITE_SCALE * 2);
     for (const e of state.enemies) {
       if (e.type === 2) {
-        // Boss: draw at 2x sprite scale
-        const bossSize = getSpriteSize(SPRITE_SCALE * 2);
         this.drawSpriteGlowScaled("boss", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.magenta, SPRITE_SCALE * 2);
+      } else if (e.type === 3) {
+        this.drawSpriteGlowScaled("boss", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.cyan, SPRITE_SCALE * 2);
+      } else if (e.type === 4) {
+        this.drawSpriteGlowScaled("boss", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.yellow, SPRITE_SCALE * 2);
+      } else if (e.type === 5) {
+        this.drawSpriteGlowScaled("boss", e.x - bossSize / 2, e.y - bossSize / 2, "#ff8800", SPRITE_SCALE * 2);
       } else if (e.type === 1) {
         this.drawSpriteGlow("hunter", e.x - SS / 2, e.y - SS / 2, COLORS.yellow);
       } else {

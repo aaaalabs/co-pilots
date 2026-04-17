@@ -1,4 +1,9 @@
-import { SHIP, BULLET, PLAYFIELD, ENEMY_DRONE, ENEMY_HUNTER, ENEMY_BOSS } from "./constants";
+import {
+  SHIP, BULLET, PLAYFIELD,
+  ENEMY_DRONE, ENEMY_HUNTER, ENEMY_BOSS,
+  ENEMY_BOSS_STRAFER, ENEMY_BOSS_SPLITTER, ENEMY_BOSS_CHARGER,
+  HEART, isBossType,
+} from "./constants";
 import { circlesOverlap } from "./Collision";
 
 export type PilotInput = {
@@ -35,21 +40,37 @@ export type Bullet = {
 
 export type Enemy = {
   id: number;
-  type: number;      // 0=drone, 1=hunter, 2=boss
+  type: number;      // 0=drone, 1=hunter, 2=sniper, 3=strafer, 4=splitter, 5=charger
   x: number;
   y: number;
   hp: number;
-  fireTimer?: number; // boss only: seconds until next shot
+  fireTimer?: number; // sniper/strafer: seconds until next shot
+  vx?: number;        // strafer: horizontal velocity sign
+  phase?: number;     // charger: 0=approach, 1=diving
+  phaseTimer?: number; // charger: time left in current phase
+  targetX?: number;   // charger: dive target x
+  targetY?: number;   // charger: dive target y
+};
+
+export type Pickup = {
+  id: number;
+  kind: "heart";
+  x: number;
+  y: number;
+  baseX: number;
+  age: number;
 };
 
 export type GameState = {
   ship: Ship;
   bullets: Bullet[];
   enemies: Enemy[];
+  pickups: Pickup[];
   score: number;
   gameOver: boolean;
   nextBulletId: number;
   nextEnemyId: number;
+  nextPickupId: number;
 };
 
 export function createInitialState(): GameState {
@@ -66,10 +87,12 @@ export function createInitialState(): GameState {
     },
     bullets: [],
     enemies: [],
+    pickups: [],
     score: 0,
     gameOver: false,
     nextBulletId: 1,
     nextEnemyId: 1,
+    nextPickupId: 1,
   };
 }
 
@@ -171,11 +194,10 @@ export function updateGameState(
         e.y += (dy / dist) * ENEMY_HUNTER.speed * dt;
       }
     } else if (e.type === 2) {
-      // Boss: drift down slowly, park near top
+      // Sniper Boss: drift down slowly, park near top, aim at ship
       if (e.y < 80) {
         e.y += ENEMY_BOSS.speed * dt;
       }
-      // Boss shoots at the ship
       e.fireTimer = (e.fireTimer ?? ENEMY_BOSS.fireInterval) - dt;
       if (e.fireTimer <= 0) {
         e.fireTimer = ENEMY_BOSS.fireInterval;
@@ -194,30 +216,107 @@ export function updateGameState(
           });
         }
       }
+    } else if (e.type === 3) {
+      // Strafer Boss: hover at parkY, bounce side-to-side, fire 3-shot downward spread
+      if (e.y < ENEMY_BOSS_STRAFER.parkY) {
+        e.y += ENEMY_BOSS_STRAFER.speed * 0.4 * dt;
+      } else {
+        if (e.vx === undefined) e.vx = 1;
+        e.x += e.vx * ENEMY_BOSS_STRAFER.speed * dt;
+        const margin = ENEMY_BOSS_STRAFER.radius;
+        if (e.x < margin) { e.x = margin; e.vx = 1; }
+        if (e.x > PLAYFIELD.width - margin) { e.x = PLAYFIELD.width - margin; e.vx = -1; }
+      }
+      e.fireTimer = (e.fireTimer ?? ENEMY_BOSS_STRAFER.fireInterval) - dt;
+      if (e.fireTimer <= 0) {
+        e.fireTimer = ENEMY_BOSS_STRAFER.fireInterval;
+        const angles = [-ENEMY_BOSS_STRAFER.spreadAngle, 0, ENEMY_BOSS_STRAFER.spreadAngle];
+        for (const a of angles) {
+          state.bullets.push({
+            id: state.nextBulletId++,
+            x: e.x,
+            y: e.y + ENEMY_BOSS_STRAFER.height / 2,
+            vx: Math.sin(a) * ENEMY_BOSS_STRAFER.bulletSpeed,
+            vy: Math.cos(a) * ENEMY_BOSS_STRAFER.bulletSpeed,
+            life: 3.0,
+            enemy: true,
+          });
+        }
+      }
+    } else if (e.type === 4) {
+      // Splitter Boss: drift down to parkY, then hover (split happens on death)
+      if (e.y < ENEMY_BOSS_SPLITTER.parkY) {
+        e.y += ENEMY_BOSS_SPLITTER.speed * dt;
+      }
+    } else if (e.type === 5) {
+      // Charger Boss: phase 0 = approach, phase 1 = dive at target
+      if (e.phase === undefined) {
+        e.phase = 0;
+        e.phaseTimer = ENEMY_BOSS_CHARGER.diveInterval;
+      }
+      if (e.phase === 0) {
+        if (e.y < 70) {
+          e.y += ENEMY_BOSS_CHARGER.speed * dt;
+        }
+        e.phaseTimer = (e.phaseTimer ?? 0) - dt;
+        if (e.phaseTimer <= 0) {
+          e.phase = 1;
+          e.phaseTimer = ENEMY_BOSS_CHARGER.diveDuration;
+          e.targetX = ship.x;
+          e.targetY = ship.y;
+        }
+      } else {
+        const tx = e.targetX ?? e.x;
+        const ty = e.targetY ?? PLAYFIELD.height;
+        const dx = tx - e.x;
+        const dy = ty - e.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 4) {
+          e.x += (dx / dist) * ENEMY_BOSS_CHARGER.diveSpeed * dt;
+          e.y += (dy / dist) * ENEMY_BOSS_CHARGER.diveSpeed * dt;
+        }
+        e.phaseTimer = (e.phaseTimer ?? 0) - dt;
+        if (e.phaseTimer <= 0) {
+          e.phase = 0;
+          e.phaseTimer = ENEMY_BOSS_CHARGER.diveInterval;
+        }
+      }
     } else {
       // Drone: straight down
       e.y += ENEMY_DRONE.speed * dt;
     }
   }
-  // Cull off-screen enemies (not bosses parked at top)
-  state.enemies = state.enemies.filter(e => e.type === 2 || e.y < PLAYFIELD.height + 30);
+  // Cull off-screen enemies (bosses persist regardless of y)
+  state.enemies = state.enemies.filter(e => isBossType(e.type) || e.y < PLAYFIELD.height + 30);
 
   // Bullet vs enemy
   for (const e of state.enemies) {
-    const er = e.type === 2 ? ENEMY_BOSS.radius : ENEMY_DRONE.radius;
+    const er = enemyRadius(e.type);
     for (const b of state.bullets) {
-      // Don't let boss bullets hit enemies
       if (b.enemy) continue;
       if (circlesOverlap(b.x, b.y, BULLET.radius, e.x, e.y, er)) {
         const dmg = b.vx === 0 ? BULLET.pilotDamage : BULLET.gunnerDamage;
         e.hp -= dmg;
         b.life = 0;
         if (e.hp <= 0) {
-          const sv = e.type === 2 ? ENEMY_BOSS.scoreValue : e.type === 1 ? ENEMY_HUNTER.scoreValue : ENEMY_DRONE.scoreValue;
-          state.score += sv;
+          state.score += enemyScore(e.type);
           break;
         }
       }
+    }
+  }
+  // Splitter death → spawn 4 hunters
+  const deadSplitters = state.enemies.filter(e => e.hp <= 0 && e.type === 4);
+  for (const s of deadSplitters) {
+    for (let i = 0; i < ENEMY_BOSS_SPLITTER.splitCount; i++) {
+      const angle = (i / ENEMY_BOSS_SPLITTER.splitCount) * Math.PI * 2;
+      state.enemies.push({
+        id: state.nextEnemyId++,
+        type: ENEMY_HUNTER.type,
+        x: s.x + Math.cos(angle) * 28,
+        y: s.y + Math.sin(angle) * 28,
+        hp: ENEMY_HUNTER.maxHp,
+      });
     }
   }
   state.enemies = state.enemies.filter(e => e.hp > 0);
@@ -235,14 +334,29 @@ export function updateGameState(
 
   // Enemy vs ship
   for (const e of state.enemies) {
-    const er = e.type === 2 ? ENEMY_BOSS.radius : ENEMY_DRONE.radius;
-    const cd = e.type === 2 ? ENEMY_BOSS.contactDamage : e.type === 1 ? ENEMY_HUNTER.contactDamage : ENEMY_DRONE.contactDamage;
+    const er = enemyRadius(e.type);
+    const cd = enemyContactDamage(e.type);
     if (circlesOverlap(ship.x, ship.y, SHIP.radius, e.x, e.y, er)) {
       ship.hp = Math.max(0, ship.hp - cd);
-      e.hp = 0;
+      // Bosses survive contact (don't disappear); only mooks die
+      if (!isBossType(e.type)) e.hp = 0;
     }
   }
   state.enemies = state.enemies.filter(e => e.hp > 0);
+
+  // Pickup movement (leaf-like sway) and collection
+  for (const p of state.pickups) {
+    p.age += dt;
+    p.y += HEART.fallSpeed * dt;
+    p.x = p.baseX + Math.sin(p.age * HEART.swayFrequency) * HEART.swayAmplitude;
+  }
+  state.pickups = state.pickups.filter(p => {
+    if (circlesOverlap(p.x, p.y, HEART.radius, ship.x, ship.y, SHIP.radius)) {
+      ship.hp = Math.min(SHIP.maxHp, ship.hp + HEART.healAmount);
+      return false;
+    }
+    return p.y < PLAYFIELD.height + HEART.height;
+  });
 
   if (state.ship.hp <= 0) {
     state.gameOver = true;
@@ -253,4 +367,37 @@ export function updateGameState(
 
 function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
+}
+
+function enemyRadius(type: number): number {
+  switch (type) {
+    case 1: return ENEMY_HUNTER.radius;
+    case 2: return ENEMY_BOSS.radius;
+    case 3: return ENEMY_BOSS_STRAFER.radius;
+    case 4: return ENEMY_BOSS_SPLITTER.radius;
+    case 5: return ENEMY_BOSS_CHARGER.radius;
+    default: return ENEMY_DRONE.radius;
+  }
+}
+
+function enemyContactDamage(type: number): number {
+  switch (type) {
+    case 1: return ENEMY_HUNTER.contactDamage;
+    case 2: return ENEMY_BOSS.contactDamage;
+    case 3: return ENEMY_BOSS_STRAFER.contactDamage;
+    case 4: return ENEMY_BOSS_SPLITTER.contactDamage;
+    case 5: return ENEMY_BOSS_CHARGER.contactDamage;
+    default: return ENEMY_DRONE.contactDamage;
+  }
+}
+
+function enemyScore(type: number): number {
+  switch (type) {
+    case 1: return ENEMY_HUNTER.scoreValue;
+    case 2: return ENEMY_BOSS.scoreValue;
+    case 3: return ENEMY_BOSS_STRAFER.scoreValue;
+    case 4: return ENEMY_BOSS_SPLITTER.scoreValue;
+    case 5: return ENEMY_BOSS_CHARGER.scoreValue;
+    default: return ENEMY_DRONE.scoreValue;
+  }
 }

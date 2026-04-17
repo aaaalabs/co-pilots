@@ -1,7 +1,7 @@
 import { PeerConnection } from "./network/PeerConnection";
 import { LeaderboardClient } from "./network/LeaderboardClient";
 import { Message, Difficulty, Role } from "./network/Protocol";
-import { LobbyScreen, LobbySettings } from "./ui/LobbyScreen";
+import { LobbyScreen } from "./ui/LobbyScreen";
 import { GameScreen } from "./ui/GameScreen";
 
 const app = document.getElementById("app")!;
@@ -11,12 +11,7 @@ let lobby: LobbyScreen | null = null;
 let gameScreen: GameScreen | null = null;
 let peer: PeerConnection | null = null;
 let isHost = false;
-let localSettings: LobbySettings = {
-  role: "pilot",
-  difficulty: "normal",
-  playerName: "",
-};
-let remoteRole: Role | null = null;
+let currentPlayerName = "";
 
 function showLobby(): void {
   cleanup();
@@ -25,8 +20,6 @@ function showLobby(): void {
     onChallenge: handleChallenge,
     onCancelChallenge: handleCancelChallenge,
     onAcceptChallenge: handleAcceptChallenge,
-    onSettingsChange: handleSettingsChange,
-    onStart: handleStartClick,
   });
 }
 
@@ -37,19 +30,18 @@ function cleanup(): void {
   gameScreen = null;
   peer?.destroy();
   peer = null;
-  remoteRole = null;
   isHost = false;
 }
 
 function handleSolo(): void {
-  localSettings.playerName = lobby?.selectedPlayer ?? "Player";
-  handleGameStart("normal");
+  currentPlayerName = lobby?.selectedPlayer ?? "Player";
+  // Solo: always pilot (mouse takes over gunner aiming)
+  startGame("pilot", lobby?.selectedDifficulty ?? "normal");
 }
 
 async function handleChallenge(): Promise<void> {
   isHost = true;
-  localSettings.role = "pilot";
-  localSettings.playerName = lobby?.selectedPlayer ?? "Player";
+  currentPlayerName = lobby?.selectedPlayer ?? "Player";
 
   peer = new PeerConnection();
   peer.setHandlers({
@@ -60,18 +52,19 @@ async function handleChallenge(): Promise<void> {
 
   try {
     const peerId = await peer.initPeer();
-    await leaderboard.postChallenge(localSettings.playerName, peerId);
+    await leaderboard.postChallenge(currentPlayerName, peerId);
     lobby?.setWaiting(true);
     lobby?.setStatus("Warte auf Mitspieler...");
   } catch (err) {
-    lobby?.setStatus(`Error: ${(err as Error).message}`);
+    console.warn("Challenge create failed:", err);
+    lobby?.setStatus(`Fehler: ${(err as Error).message}`);
     peer?.destroy();
     peer = null;
   }
 }
 
 function handleCancelChallenge(): void {
-  leaderboard.cancelChallenge(localSettings.playerName).catch(() => {});
+  leaderboard.cancelChallenge(currentPlayerName).catch(() => {});
   peer?.destroy();
   peer = null;
   lobby?.setWaiting(false);
@@ -80,10 +73,10 @@ function handleCancelChallenge(): void {
 
 async function handleAcceptChallenge(opponent: string): Promise<void> {
   isHost = false;
-  localSettings.role = "gunner";
-  localSettings.playerName = lobby?.selectedPlayer ?? "Player";
+  currentPlayerName = lobby?.selectedPlayer ?? "Player";
 
-  const opponentPeerId = await leaderboard.acceptChallenge(localSettings.playerName, opponent);
+  lobby?.setStatus(`Verbinde mit ${opponent}...`);
+  const opponentPeerId = await leaderboard.acceptChallenge(currentPlayerName, opponent);
   if (!opponentPeerId) {
     lobby?.setStatus(`${opponent} ist nicht mehr verfügbar`);
     return;
@@ -98,74 +91,51 @@ async function handleAcceptChallenge(opponent: string): Promise<void> {
 
   try {
     await peer.connectToPeer(opponentPeerId);
-    lobby?.setJoined(false);
-    sendReady();
+    // Tell host we're here
+    peer.send({
+      type: "ready",
+      player: currentPlayerName,
+      role: "gunner", // placeholder; host's start message decides actual role
+    });
   } catch (err) {
-    lobby?.setStatus(`Error: ${(err as Error).message}`);
+    console.warn("Connect failed:", err);
+    lobby?.setStatus(`Verbindung fehlgeschlagen: ${(err as Error).message}`);
     peer?.destroy();
     peer = null;
   }
 }
 
-function handleSettingsChange(settings: LobbySettings): void {
-  localSettings = settings;
-  sendReady();
-}
-
-function sendReady(): void {
-  if (!peer) return;
-  peer.send({
-    type: "ready",
-    player: localSettings.playerName,
-    role: localSettings.role,
-  });
-}
-
 function handleMessage(msg: Message): void {
-  if (msg.type === "ready") {
-    remoteRole = msg.role;
-    if (isHost && lobby) {
-      // Cancel the challenge listing when someone connects
-      leaderboard.cancelChallenge(localSettings.playerName).catch(() => {});
-      lobby.setJoined(true);
-      sendReady();
-    }
-    lobby?.setPeerReady(true);
-    if (remoteRole === localSettings.role) {
-      lobby?.setStatus(`Rollenkonflikt: beide sind ${localSettings.role}`);
-    } else {
-      lobby?.setStatus(`Co-pilot bereit (${msg.player || "Player"})`);
-    }
-  } else if (msg.type === "start") {
-    handleGameStart(msg.difficulty);
+  if (msg.type === "ready" && isHost) {
+    // Joiner connected. Cancel listing, send start, jump into game.
+    leaderboard.cancelChallenge(currentPlayerName).catch(() => {});
+    const hostRole = lobby?.selectedRole ?? "pilot";
+    const difficulty = lobby?.selectedDifficulty ?? "normal";
+    peer?.send({ type: "start", difficulty, hostRole });
+    startGame(hostRole, difficulty);
+  } else if (msg.type === "start" && !isHost) {
+    // Joiner takes the opposite role.
+    const myRole: Role = msg.hostRole === "pilot" ? "gunner" : "pilot";
+    startGame(myRole, msg.difficulty);
   } else if (gameScreen && (msg.type === "snapshot" || msg.type === "input")) {
     gameScreen.handleNetworkMessage(msg);
   }
 }
 
-function handleStartClick(): void {
-  if (!isHost || !peer) return;
-  if (remoteRole === localSettings.role) {
-    lobby?.setStatus("Kann nicht starten: Rollenkonflikt");
-    return;
-  }
-  peer.send({ type: "start", difficulty: localSettings.difficulty });
-  handleGameStart(localSettings.difficulty);
-}
-
-function handleGameStart(_difficulty: Difficulty): void {
+function startGame(role: Role, _difficulty: Difficulty): void {
   lobby?.destroy();
   lobby = null;
-  const role = localSettings.role;
-  gameScreen = new GameScreen(app, {
-    onExit: () => showLobby(),
-  }, role, peer);
+  gameScreen = new GameScreen(
+    app,
+    { onExit: () => showLobby() },
+    role,
+    peer,
+    { playerName: currentPlayerName, leaderboard },
+  );
 }
 
 function handleDisconnect(): void {
   lobby?.setStatus("Co-pilot disconnected");
-  lobby?.setPeerReady(false);
-  remoteRole = null;
 }
 
 showLobby();

@@ -3,6 +3,11 @@ interface ChallengeEntry {
   peerId: string;
 }
 
+export interface ScoreEntry {
+  player: string;
+  score: number;
+}
+
 export class LeaderboardClient {
   private baseUrl = "/api";
 
@@ -36,5 +41,11 @@ export class LeaderboardClient {
 
   async submitScore(player: string, score: number): Promise<void> {
     await this.post({ action: "score", player, score });
+  }
+
+  async getLeaderboard(): Promise<ScoreEntry[]> {
+    const res = await fetch(`${this.baseUrl}/leaderboard?action=scores`);
+    const data = await res.json();
+    return data.scores ?? [];
   }
 }

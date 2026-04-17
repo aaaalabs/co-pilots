@@ -171,6 +171,18 @@ const BOSS_BULLET: number[][] = [
   [0,0,0,0,0,0,0,0],
 ];
 
+// ── HEART PICKUP ──
+const HEART_SPRITE: number[][] = [
+  [0,2,2,0,0,2,2,0],
+  [2,4,2,2,2,2,4,2],
+  [2,2,2,2,2,2,2,2],
+  [2,2,2,2,2,2,2,2],
+  [0,2,2,2,2,2,2,0],
+  [0,0,2,2,2,2,0,0],
+  [0,0,0,2,2,0,0,0],
+  [0,0,0,0,0,0,0,0],
+];
+
 export const SPRITES = {
   ship: SHIP,
   turret: TURRET,
@@ -183,6 +195,7 @@ export const SPRITES = {
   explosion1: EXPLOSION_1,
   explosion2: EXPLOSION_2,
   powerup: POWERUP,
+  heart: HEART_SPRITE,
 } as const;
 
 export type SpriteKey = keyof typeof SPRITES;

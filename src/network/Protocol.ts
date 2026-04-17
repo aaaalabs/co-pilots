@@ -7,14 +7,16 @@ export type SnapshotData = {
   ship: { x: number; y: number; hp: number; turretAngle: number };
   bullets: Array<{ id: number; x: number; y: number; vx: number; vy: number; enemy?: boolean }>;
   enemies: Array<{ id: number; type: number; x: number; y: number; hp: number }>;
+  pickups: Array<{ id: number; kind: "heart"; x: number; y: number }>;
   score: number;
+  wave: number;
   gameOver: boolean;
 };
 
 export type Message =
   // Lobby
   | { type: "ready"; player?: string; role: Role }
-  | { type: "start"; difficulty: Difficulty }
+  | { type: "start"; difficulty: Difficulty; hostRole: Role }
   // Gameplay (host → gunner)
   | { type: "snapshot"; tick: number; state: SnapshotData }
   // Gameplay (gunner → host)
