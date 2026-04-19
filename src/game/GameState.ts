@@ -324,17 +324,17 @@ export function updateGameState(
       }
     }
   }
-  // Splitter death → spawn 4 hunters
+  // Splitter death → spray drones outward in a ring (quantity over quality)
   const deadSplitters = state.enemies.filter(e => e.hp <= 0 && e.type === 4);
   for (const s of deadSplitters) {
     for (let i = 0; i < ENEMY_BOSS_SPLITTER.splitCount; i++) {
       const angle = (i / ENEMY_BOSS_SPLITTER.splitCount) * Math.PI * 2;
       state.enemies.push({
         id: state.nextEnemyId++,
-        type: ENEMY_HUNTER.type,
-        x: s.x + Math.cos(angle) * 28,
-        y: s.y + Math.sin(angle) * 28,
-        hp: ENEMY_HUNTER.maxHp,
+        type: ENEMY_DRONE.type,
+        x: s.x + Math.cos(angle) * ENEMY_BOSS_SPLITTER.splitRadius,
+        y: s.y + Math.sin(angle) * ENEMY_BOSS_SPLITTER.splitRadius,
+        hp: ENEMY_DRONE.maxHp,
       });
     }
   }

@@ -93,7 +93,8 @@ export const ENEMY_BOSS_SPLITTER = {
   maxHp: 600,
   contactDamage: 3,
   scoreValue: 360,
-  splitCount: 4,
+  splitCount: 10,
+  splitRadius: 42,
 } as const;
 
 // Enemy type 5: Charger Boss — slow approach + fast dive

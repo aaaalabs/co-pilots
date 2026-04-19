@@ -333,13 +333,13 @@ export class Renderer {
     const bossSize = getSpriteSize(SPRITE_SCALE * 2);
     for (const e of state.enemies) {
       if (e.type === 2) {
-        this.drawSpriteGlowScaled("boss", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.magenta, SPRITE_SCALE * 2);
+        this.drawSpriteGlowScaled("bossSniper", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.magenta, SPRITE_SCALE * 2);
       } else if (e.type === 3) {
-        this.drawSpriteGlowScaled("boss", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.cyan, SPRITE_SCALE * 2);
+        this.drawSpriteGlowScaled("bossStrafer", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.cyan, SPRITE_SCALE * 2);
       } else if (e.type === 4) {
-        this.drawSpriteGlowScaled("boss", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.yellow, SPRITE_SCALE * 2);
+        this.drawSpriteGlowScaled("bossSplitter", e.x - bossSize / 2, e.y - bossSize / 2, COLORS.yellow, SPRITE_SCALE * 2);
       } else if (e.type === 5) {
-        this.drawSpriteGlowScaled("boss", e.x - bossSize / 2, e.y - bossSize / 2, "#ff8800", SPRITE_SCALE * 2);
+        this.drawSpriteGlowScaled("bossCharger", e.x - bossSize / 2, e.y - bossSize / 2, "#ff8800", SPRITE_SCALE * 2);
       } else if (e.type === 1) {
         this.drawSpriteGlow("hunter", e.x - SS / 2, e.y - SS / 2, COLORS.yellow);
       } else {

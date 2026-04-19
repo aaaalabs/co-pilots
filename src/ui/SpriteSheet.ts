@@ -144,18 +144,56 @@ const HUNTER: number[][] = [
   [0,0,0,3,3,0,0,0],  // engine glow (yellow)
 ];
 
-// ── BOSS ──
-// Massive warship, 8x8 but rendered at 2x sprite scale.
-// Dark armored hull, magenta core, white weapon ports.
-const BOSS: number[][] = [
-  [5,5,2,4,4,2,5,5],  // top armor + weapon ports (white)
-  [5,2,2,2,2,2,2,5],  // upper hull
-  [2,2,5,2,2,5,2,2],  // armor plates (dark seams)
-  [2,4,2,2,2,2,4,2],  // side cannons (white)
-  [2,2,2,5,5,2,2,2],  // central reactor gap (dark)
-  [5,2,5,4,4,5,2,5],  // reactor core (white glow)
-  [5,2,2,2,2,2,2,5],  // lower hull
-  [0,5,2,5,5,2,5,0],  // engine bay
+// ── BOSS: SNIPER (type 2) ──
+// Tall, narrow, predatory. Twin sensor eyes + long central cannon with charging muzzle.
+const BOSS_SNIPER: number[][] = [
+  [0,0,2,2,2,2,0,0],  // narrow head top
+  [0,2,4,2,2,4,2,0],  // twin sensor eyes (white)
+  [2,2,5,2,2,5,2,2],  // head dark slits
+  [2,5,2,2,2,2,5,2],  // shoulder armor
+  [5,2,2,2,2,2,2,5],  // body
+  [5,2,5,2,2,5,2,5],  // armor seams
+  [0,5,2,4,4,2,5,0],  // central cannon (white muzzle)
+  [0,0,5,3,3,5,0,0],  // muzzle charge (yellow flash)
+];
+
+// ── BOSS: STRAFER (type 3) ──
+// Wide bomber with twin gun wings and a hot central reactor.
+const BOSS_STRAFER: number[][] = [
+  [5,2,0,0,0,0,2,5],  // wingtips (flared corners)
+  [2,2,2,5,5,2,2,2],  // wings with dark seam
+  [2,5,2,4,4,2,5,2],  // central hull with white ports
+  [5,2,5,2,2,5,2,5],  // armor pattern
+  [2,5,2,3,3,2,5,2],  // reactor (yellow hot)
+  [2,2,2,5,5,2,2,2],  // lower wings
+  [5,5,2,2,2,2,5,5],  // trailing edge
+  [0,0,5,0,0,5,0,0],  // twin thrusters
+];
+
+// ── BOSS: SPLITTER (type 4) ──
+// Segmented cluster with visible split-lines and spawn-cell eyes.
+const BOSS_SPLITTER: number[][] = [
+  [0,2,2,0,0,2,2,0],  // top segments (separated)
+  [2,2,4,5,5,4,2,2],  // upper cells with white eyes
+  [2,4,2,2,2,2,4,2],  // more cells
+  [5,5,2,3,3,2,5,5],  // split line (yellow middle)
+  [5,5,2,3,3,2,5,5],  // split line
+  [2,4,2,2,2,2,4,2],  // cells
+  [2,2,4,5,5,4,2,2],  // lower cells with white eyes
+  [0,2,2,0,0,2,2,0],  // bottom segments
+];
+
+// ── BOSS: CHARGER (type 5) ──
+// Aggressive spear shape pointing down, wings spread, yellow thruster trail.
+const BOSS_CHARGER: number[][] = [
+  [0,0,0,5,5,0,0,0],  // narrow top
+  [0,0,2,2,2,2,0,0],  // upper body
+  [0,2,2,4,4,2,2,0],  // shoulders with white
+  [2,2,5,2,2,5,2,2],  // body with dark slits
+  [2,5,2,2,2,2,5,2],  // spread wings
+  [5,2,0,4,4,0,2,5],  // reaching wingtips, white center
+  [0,5,2,2,2,2,5,0],  // converging bottom
+  [0,0,3,3,3,3,0,0],  // yellow flame thruster
 ];
 
 // ── BOSS BULLET ──
@@ -188,7 +226,10 @@ export const SPRITES = {
   turret: TURRET,
   drone: DRONE,
   hunter: HUNTER,
-  boss: BOSS,
+  bossSniper: BOSS_SNIPER,
+  bossStrafer: BOSS_STRAFER,
+  bossSplitter: BOSS_SPLITTER,
+  bossCharger: BOSS_CHARGER,
   bulletPilot: BULLET_PILOT,
   bulletGunner: BULLET_GUNNER,
   bossBullet: BOSS_BULLET,
