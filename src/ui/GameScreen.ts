@@ -1,6 +1,6 @@
 import { createInitialState, updateGameState, GameState, GunnerInput } from "../game/GameState";
 import { createWaveSpawner, tickWaveSpawner, WaveSpawner } from "../game/WaveSpawner";
-import { PLAYFIELD, SHIP, WAVE } from "../game/constants";
+import { PLAYFIELD, SHIP, WAVE, ENEMY_DRONE, ENEMY_HUNTER } from "../game/constants";
 import { Renderer } from "./Renderer";
 import { KeyboardControls } from "./KeyboardControls";
 import { MouseControls } from "./MouseControls";
@@ -233,6 +233,27 @@ export class GameScreen {
   }
 
   private updateGunner(frameDt: number): void {
+    // Client-side extrapolation: advance bullets + fast-moving enemies between
+    // snapshots so the world keeps moving during 20Hz gaps and WebRTC jitter.
+    // Each new snapshot re-applies authoritative positions, so drift self-corrects.
+    for (const b of this.state.bullets) {
+      b.x += b.vx * frameDt;
+      b.y += b.vy * frameDt;
+    }
+    for (const e of this.state.enemies) {
+      if (e.type === ENEMY_DRONE.type) {
+        e.y += ENEMY_DRONE.speed * frameDt;
+      } else if (e.type === ENEMY_HUNTER.type) {
+        const dx = this.state.ship.x - e.x;
+        const dy = this.state.ship.y - e.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 1) {
+          e.x += (dx / dist) * ENEMY_HUNTER.speed * frameDt;
+          e.y += (dy / dist) * ENEMY_HUNTER.speed * frameDt;
+        }
+      }
+    }
+
     // Read local mouse for aim + send to host
     if (this.mouse && this.peer) {
       const gi = this.mouse.getGunnerInput(this.state.ship.x, this.state.ship.y);
